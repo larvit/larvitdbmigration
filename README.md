@@ -18,28 +18,22 @@ In your application startup script, do something like this:
 
     'use strict';
 
-    var db          = require('larvitdb'),
-        dbMigration = require('larvitdbmigration');
+    var dbMigration = require('larvitdbmigration');
 
-    db.setup({'host': '127.0.0.1', 'user': 'bar', 'database': 'bar'}, function(err) {
+    dbMigration({'host': '127.0.0.1', 'user': 'bar', 'database': 'bar'})(function(err) {
     	if (err)
     		throw err;
 
-    	dbMigration()(function(err) {
-    		if (err)
-    			throw err;
-
-    		// Now database is migrated and ready for use!
-    	});
+    	// Now database is migrated and ready for use!
     });
 
 To use custom table name and/or script path, just change
 
-    	dbMigration()(function(err) {
+    	dbMigration({'host': '127.0.0.1', 'user': 'bar', 'database': 'bar'})(function(err) {
 
 to
 
-    	dbMigration({'tableName': 'some_table', 'migrationScriptsPath': './scripts_yo'})(function(err) {
+    	dbMigration({'host': '127.0.0.1', 'user': 'bar', 'database': 'bar', 'tableName': 'some_table', 'migrationScriptsPath': './scripts_yo'})(function(err) {
 
 ### Example migration script
 
