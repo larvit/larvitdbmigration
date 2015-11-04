@@ -169,10 +169,6 @@ exports = module.exports = function(options) {
 			db.query(sql, cb);
 		});
 
-		async.series(tasks, function(err) {
-			db.end();
-
-			cb(err);
-		});
+		async.series(tasks, cb);
 	};
 };
