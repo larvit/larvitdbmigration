@@ -74,37 +74,18 @@ exports = module.exports = function(options) {
 
 		// Create table if it does not exist
 		tasks.push(function(cb) {
-			var sql = 'SHOW TABLES like \'' + options.tableName + '\';';
+			var sql = 'CREATE TABLE IF NOT EXISTS `' + options.tableName + '` (`version` int(10) unsigned NOT NULL DEFAULT \'0\', `running` tinyint(3) unsigned NOT NULL DEFAULT \'0\') ENGINE=InnoDB DEFAULT CHARSET=ascii COLLATE=ascii_bin COMMENT \'Used for automatic database versioning. Do not modify!\';';
 			log.debug('larvitdbmigration: Running SQL: "' + sql + '"');
-			db.query(sql, function(err, rows) {
-				var customErr;
+			db.query(sql, function(err) {
+				var sql = 'INSERT INTO `' + options.tableName + '` (version, running) VALUES(0, 0);';
 
 				if (err) {
 					cb(err);
 					return;
 				}
 
-				if (rows.length === 1) {
-					cb();
-				} else if (rows.length === 0) {
-					sql = 'CREATE TABLE `' + options.tableName + '` (`version` int(10) unsigned NOT NULL DEFAULT \'0\', `running` tinyint(3) unsigned NOT NULL DEFAULT \'0\') ENGINE=InnoDB DEFAULT CHARSET=ascii COLLATE=ascii_bin;';
-					log.debug('larvitdbmigration: Running SQL: "' + sql + '"');
-					db.query(sql, function(err) {
-						var sql = 'INSERT INTO `' + options.tableName + '` (version, running) VALUES(0, 0);';
-
-						if (err) {
-							cb(err);
-							return;
-						}
-
-						log.debug('larvitdbmigration: Running SQL: "' + sql + '"');
-						db.query(sql, cb);
-					});
-				} else {
-					customErr = new Error('larvitdbmigration: SHOW TABLES like \'' + options.tableName + '\'; returned either 0 or 1 rows, but: "' + rows.length + '"');
-					log.error(customErr.message);
-					cb(customErr);
-				}
+				log.debug('larvitdbmigration: Running SQL: "' + sql + '"');
+				db.query(sql, cb);
 			});
 		});
 
