@@ -76,7 +76,15 @@ exports = module.exports = function(options) {
 		tasks.push(function(cb) {
 			var sql = 'CREATE TABLE IF NOT EXISTS `' + options.tableName + '` (`version` int(10) unsigned NOT NULL DEFAULT \'0\', `running` tinyint(3) unsigned NOT NULL DEFAULT \'0\') ENGINE=InnoDB DEFAULT CHARSET=ascii COLLATE=ascii_bin COMMENT \'Used for automatic database versioning. Do not modify!\';';
 			log.debug('larvitdbmigration: Running SQL: "' + sql + '"');
-			db.query(sql, function(err) {
+			db.query(sql, cb);
+		});
+
+		// Insert first record if it does not exist
+		tasks.push(function(cb) {
+			var sql = 'SELECT * FROM `' + options.tableName + '`;';
+
+			log.debug('larvitdbmigration: Running SQL: "' + sql + '"');
+			db.query(sql, function(err, rows) {
 				var sql = 'INSERT INTO `' + options.tableName + '` (version, running) VALUES(0, 0);';
 
 				if (err) {
@@ -84,8 +92,12 @@ exports = module.exports = function(options) {
 					return;
 				}
 
-				log.debug('larvitdbmigration: Running SQL: "' + sql + '"');
-				db.query(sql, cb);
+				if ( ! rows.length) {
+					log.debug('larvitdbmigration: Running SQL: "' + sql + '"');
+					db.query(sql, cb);
+				} else {
+					cb();
+				}
 			});
 		});
 
