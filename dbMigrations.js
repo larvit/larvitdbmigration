@@ -21,6 +21,24 @@ exports = module.exports = function(options) {
 		options.migrationScriptsPath = process.cwd() + '/' + options.migrationScriptsPath.substring(2);
 	}
 
+	function getLock(cb) {
+		db.query('SELECT running FROM `' + options.tableName + '`;', function(err, rows) {
+			if (err) {
+				cb(err);
+				return;
+			}
+
+			if (parseInt(rows[0].running) === 1) {
+				log.verbose('larvitdbmigration: Another process is running the migrations, wait and try again soon.');
+				setTimeout(function() {
+					getLock(cb);
+				}, 500);
+			} else {
+				cb();
+			}
+		});
+	}
+
 	return function(cb) {
 		var tasks = [],
 		    curVer;
@@ -103,24 +121,6 @@ exports = module.exports = function(options) {
 
 		// Lock table by setting the running column to 1
 		tasks.push(function(cb) {
-			function getLock(cb) {
-				db.query('SELECT running FROM `' + options.tableName + '`;', function(err, rows) {
-					if (err) {
-						cb(err);
-						return;
-					}
-
-					if (parseInt(rows[0].running) === 1) {
-						log.verbose('larvitdbmigration: Another process is running the migrations, wait and try again soon.');
-						setTimeout(function() {
-							getlock(cb);
-						}, 500);
-					} else {
-						cb();
-					}
-				});
-			}
-
 			getLock(function(err) {
 				var sql = 'UPDATE `' + options.tableName + '` SET running = 1;';
 
