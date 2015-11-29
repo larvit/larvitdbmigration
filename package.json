@@ -7,10 +7,10 @@
 	"private": false,
 	"contributors": [],
 	"dependencies": {
-		"winston": "latest",
-		"mysql": "latest",
-		"lodash": "latest",
-		"async": "latest"
+		"async": "~1.5",
+		"lodash": "~3.10",
+		"mysql": "~2.9",
+		"winston": "~2.1"
 	},
 	"description": "node.js database migration tool",
 	"devDependencies": {
@@ -30,7 +30,7 @@
 		"url": "https://github.com/larvit/larvitdbmigration",
 		"type": "git"
 	},
-	"version": "0.2.4",
+	"version": "0.2.5",
 	"readmeFilename": "README.md",
 	"scripts": {},
 	"license": "MIT",
