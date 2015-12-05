@@ -9,10 +9,10 @@ var async = require('async'),
 exports = module.exports = function(options) {
 	options = options || {};
 
-	_.assign(options, {
+	_.assign({
 		'tableName': 'db_version',
 		'migrationScriptsPath': './dbmigration'
-	});
+	}, options);
 
 	log.verbose('larvitdbmigration: Started with options: ' + JSON.stringify(options));
 
