@@ -3,16 +3,13 @@
 var async = require('async'),
     log   = require('winston'),
     fs    = require('fs'),
-    db    = require('larvitdb'),
-    _     = require('lodash');
+    db    = require('larvitdb');
 
 exports = module.exports = function(options) {
 	options = options || {};
 
-	_.assign({
-		'tableName': 'db_version',
-		'migrationScriptsPath': './dbmigration'
-	}, options);
+	if (options.tableName            === undefined) options.tableName            = 'db_version';
+	if (options.migrationScriptsPath === undefined) options.migrationScriptsPath = './dbmigration';
 
 	log.verbose('larvitdbmigration: Started with options: ' + JSON.stringify(options));
 
