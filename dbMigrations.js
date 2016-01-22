@@ -1,6 +1,7 @@
 'use strict';
 
 var async = require('async'),
+    exec  = require('child_process').exec,
     log   = require('winston'),
     fs    = require('fs'),
     db    = require('larvitdb');
@@ -19,14 +20,14 @@ exports = module.exports = function(options) {
 	}
 
 	function getLock(cb) {
-		db.query('SELECT running FROM `' + options.tableName + '`;', function(err, rows) {
+		db.query('UPDATE `' + options.tableName + '` SET running = 1', function(err, res) {
 			if (err) {
 				cb(err);
 				return;
 			}
 
-			if (parseInt(rows[0].running) === 1) {
-				log.verbose('larvitdbmigration: Another process is running the migrations, wait and try again soon.');
+			if (res.changedRows === 0) {
+				log.info('larvitdbmigration: Another process is running the migrations, wait and try again soon.');
 				setTimeout(function() {
 					getLock(cb);
 				}, 500);
@@ -43,7 +44,9 @@ exports = module.exports = function(options) {
 		function runScripts(startVersion, cb) {
 			log.verbose('larvitdbmigration: runScripts() - Started with startVersion: "' + startVersion + '"');
 			fs.readdir(options.migrationScriptsPath, function(err, items) {
-				var i;
+				var sql = 'UPDATE `' + options.tableName + '` SET version = ' + parseInt(startVersion) + ';',
+				    cmd,
+				    i;
 
 				if (err) {
 					log.warn('larvitdbmigration: runScripts() - Could not read migration script path "' + options.migrationScriptsPath + '"');
@@ -54,18 +57,53 @@ exports = module.exports = function(options) {
 				i = 0;
 				while (items[i] !== undefined) {
 					if (items[i] === startVersion + '.js') {
-						log.info('larvitdbmigration: runScripts() - Found migration script #' + startVersion + ', running it now.');
+						log.info('larvitdbmigration: runScripts() - Found js migration script #' + startVersion + ', running it now.');
 						require(options.migrationScriptsPath + '/' + startVersion + '.js')(function(err) {
-							var sql = 'UPDATE `' + options.tableName + '` SET version = ' + parseInt(startVersion) + ';';
-
 							if (err) {
 								log.error('larvitdbmigration: runScripts() - Got error running migration script #' + startVersion + ': ' + err.message);
 								cb(err);
 								return;
 							}
 
-							log.info('larvitdbmigration: runScripts() - Migration script #' + startVersion + ' ran. Update database version and move on.');
-							log.debug('larvitdbmigration: runScripts() - Running SQL: "' + sql + '"');
+							log.info('larvitdbmigration: runScripts() - Js migration script #' + startVersion + ' ran. Updating database version and moving on.');
+							db.query(sql, function(err) {
+								if (err) {
+									cb(err);
+									return;
+								}
+
+								runScripts(parseInt(startVersion) + 1, cb);
+							});
+						});
+
+						return;
+					} else if (items[i] === startVersion + '.sql') {
+						log.info('larvitdbmigration: runScripts() - Found sql migration script #' + startVersion + ', running it now.');
+
+						cmd = 'mysql -u ' + db.conf.user + ' -p' + db.conf.password;
+
+						if (db.conf.host) {
+							cmd += ' -h ' + db.conf.host;
+						}
+
+						cmd += ' ' + db.conf.database + ' < ' + options.migrationScriptsPath + '/' + items[i];
+
+						exec(cmd, function(err, stdout, stderr) {
+							var customErr;
+
+							if (err) {
+								cb(err);
+								return;
+							}
+
+							if (stderr) {
+								customErr = new Error('stderr is not empty: ' + stderr);
+								log.error('larvitdbmigration: ' + customErr.message);
+								cb(customErr);
+								return;
+							}
+
+							log.info('larvitdbmigration: runScripts() - Sql migration script #' + startVersion + ' ran. Updating database version and moving on.');
 							db.query(sql, function(err) {
 								if (err) {
 									cb(err);
@@ -89,59 +127,29 @@ exports = module.exports = function(options) {
 
 		// Create table if it does not exist
 		tasks.push(function(cb) {
-			var sql = 'CREATE TABLE IF NOT EXISTS `' + options.tableName + '` (`version` int(10) unsigned NOT NULL DEFAULT \'0\', `running` tinyint(3) unsigned NOT NULL DEFAULT \'0\') ENGINE=InnoDB DEFAULT CHARSET=ascii COLLATE=ascii_bin COMMENT \'Used for automatic database versioning. Do not modify!\';';
-			log.debug('larvitdbmigration: Running SQL: "' + sql + '"');
+			var sql = 'CREATE TABLE IF NOT EXISTS `' + options.tableName + '` (`id` tinyint(1) unsigned NOT NULL DEFAULT \'1\', `version` int(10) unsigned NOT NULL DEFAULT \'0\', `running` tinyint(3) unsigned NOT NULL DEFAULT \'0\', PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=ascii COLLATE=ascii_bin COMMENT=\'Used for automatic database versioning. Do not modify!\';';
 			db.query(sql, cb);
 		});
 
 		// Insert first record if it does not exist
 		tasks.push(function(cb) {
-			var sql = 'SELECT * FROM `' + options.tableName + '`;';
-
-			log.debug('larvitdbmigration: Running SQL: "' + sql + '"');
-			db.query(sql, function(err, rows) {
-				var sql = 'INSERT INTO `' + options.tableName + '` (version, running) VALUES(0, 0);';
-
-				if (err) {
-					cb(err);
-					return;
-				}
-
-				if ( ! rows.length) {
-					log.debug('larvitdbmigration: Running SQL: "' + sql + '"');
-					db.query(sql, cb);
-				} else {
-					cb();
-				}
-			});
+			db.query('INSERT IGNORE INTO `' + options.tableName + '` VALUES(1, 0, 0);', cb);
 		});
 
 		// Lock table by setting the running column to 1
-		tasks.push(function(cb) {
-			getLock(function(err) {
-				var sql = 'UPDATE `' + options.tableName + '` SET running = 1;';
-
-				if (err) {
-					cb(err);
-					return;
-				}
-
-				log.debug('larvitdbmigration: Running SQL: "' + sql + '"');
-				db.query(sql, cb);
-			});
-		});
+		tasks.push(getLock);
 
 		// Get current version
 		tasks.push(function(cb) {
-			var sql = 'SELECT version FROM `' + options.tableName + '`;';
-			log.debug('larvitdbmigration: Running SQL: "' + sql + '"');
-			db.query(sql, function(err, rows) {
+			db.query('SELECT version FROM `' + options.tableName + '`;', function(err, rows) {
 				if (err) {
 					cb(err);
 					return;
 				}
 
 				curVer = parseInt(rows[0].version);
+
+				log.info('larvitdbmigration: Current database version is ' + curVer);
 
 				cb();
 			});
@@ -154,9 +162,7 @@ exports = module.exports = function(options) {
 
 		// Unlock table
 		tasks.push(function(cb) {
-			var sql = 'UPDATE `' + options.tableName + '` SET running = 0;';
-			log.debug('larvitdbmigration: Running SQL: "' + sql + '"');
-			db.query(sql, cb);
+			db.query('UPDATE `' + options.tableName + '` SET running = 0;', cb);
 		});
 
 		async.series(tasks, cb);

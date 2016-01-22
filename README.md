@@ -16,39 +16,84 @@ Each migration script will be ran, and the db_version increased, until no more m
 
 In your application startup script, do something like this:
 
-    'use strict';
+```javascript
+'use strict';
 
-    var dbMigration = require('larvitdbmigration');
+var dbMigration = require('larvitdbmigration');
 
-    dbMigration({'host': '127.0.0.1', 'user': 'bar', 'database': 'bar'})(function(err) {
-    	if (err)
-    		throw err;
+dbMigration({
+	'host': '127.0.0.1',
+	'user': 'bar',
+	'database': 'bar'
+})(function(err) {
+	if (err) {
+		throw err;
+	}
 
-    	// Now database is migrated and ready for use!
-    });
+	// Now database is migrated and ready for use!
+});
+```
 
 To use custom table name and/or script path, just change
 
-    	dbMigration({'host': '127.0.0.1', 'user': 'bar', 'database': 'bar'})(function(err) {
+```javascript
+dbMigration({
+	'host': '127.0.0.1',
+	'user': 'bar',
+	'password': 'bar',
+	'database': 'bar'
+})(function(err) {
+```
 
 to
 
-    	dbMigration({'host': '127.0.0.1', 'user': 'bar', 'database': 'bar', 'tableName': 'some_table', 'migrationScriptsPath': './scripts_yo'})(function(err) {
+```javascript
+dbMigration({
+	'host': '127.0.0.1',
+	'user': 'bar',
+	'password': 'bar',
+	'database': 'bar',
+	'tableName': 'some_table',
+	'migrationScriptsPath': './scripts_yo'
+})(function(err) {
+```
 
-### Example migration script
+### Example migration scripts
 
 Lets say the current database have a table like this:
 
-    CREATE TABLE bloj (nisse int(11));
+```SQL
+CREATE TABLE bloj (nisse int(11));
+```
 
-And in the next deploy we'd like to change the column name "nisse" to "hasse". Then create the file <application root>/dbmigration/1.js with this content:
+And in the next deploy we'd like to change the column name "nisse" to "hasse". For this you can do one of two methods:
 
-    'use strict';
+#### Javascript
 
-    var db = require('db');
+Create the file <application root>/<migrationScriptsPath>/1.js with this content:
 
-    exports = module.exports = function(cb) {
-    	db.query('ALTER TABLE bloj CHANGE nisse hasse int(11);', cb);
-    }
+```javascript
+'use strict';
 
-Tadaaa! Now this gets done once and the version will be bumped to 1. If you then create a script named "2.js" you might guess what happends. :)
+var db = require('db');
+
+exports = module.exports = function(cb) {
+	db.query('ALTER TABLE bloj CHANGE nisse hasse int(11);', cb);
+}
+```
+
+#### SQL
+
+_IMPORTANT!_ SQL files will be ignored if a .js file exists.
+
+_ALSO IMPORTANT!_ SQL files require the mysql client to be installed on the host system.
+
+Create the file <application root>/<migrationScriptsPath>/1.sql with this content:
+
+```SQL
+ALTER TABLE bloj CHANGE nisse hasse int(11);
+```
+
+#### Summary
+
+Tadaaa! Now this gets done once and the version will be bumped to 1. If you then create a script named "2.js" or "2.sql" you might guess what happends. :)
