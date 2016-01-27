@@ -131,6 +131,31 @@ exports = module.exports = function(options) {
 			db.query(sql, cb);
 		});
 
+		// Update old version of table (for seamless updating of old versions of this module)
+		tasks.push(function(cb) {
+			db.query('DESCRIBE `' + options.tableName + '`', function(err, rows) {
+				if (err) {
+					cb(err);
+					return;
+				}
+
+				if (rows.length === 2 && rows[0].Field === 'version' && rows[1].Field === 'running') {
+					// Old version detected! Update!
+					db.query('ALTER TABLE `' + options.tableName + '` ADD `id` tinyint(1) unsigned NOT NULL DEFAULT \'1\' FIRST;', function(err) {
+						if (err) {
+							cb(err);
+							return;
+						}
+
+						db.query('ALTER TABLE `' + options.tableName + '` ADD PRIMARY KEY `id` (`id`);', cb);
+					});
+				} else {
+					// Nothing to do, continue
+					cb();
+				}
+			});
+		});
+
 		// Insert first record if it does not exist
 		tasks.push(function(cb) {
 			db.query('INSERT IGNORE INTO `' + options.tableName + '` VALUES(1, 0, 0);', cb);

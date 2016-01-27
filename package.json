@@ -30,7 +30,7 @@
 		"url": "https://github.com/larvit/larvitdbmigration",
 		"type": "git"
 	},
-	"version": "0.3.0",
+	"version": "0.3.1",
 	"readmeFilename": "README.md",
 	"scripts": {},
 	"license": "MIT",
