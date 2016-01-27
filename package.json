@@ -1,41 +1,54 @@
 {
-	"author": {
-		"name": "Mikael 'Lilleman' Göransson",
-		"email": "lilleman@larvit.se",
-		"url": "http://github.com/larvit/larvitdbmigration"
-	},
-	"private": false,
-	"contributors": [],
-	"dependencies": {
-		"async": "~1.5",
-		"larvitdb": "~0.4",
-		"lodash": "~4.0",
-		"winston": "~2.1"
-	},
-	"description": "node.js database migration tool",
-	"devDependencies": {
-		"pre-git": "latest"
-	},
-	"pre-commit": [
-		"eslint ./"
-	],
-	"keywords": [
-		"db",
-		"mariadb",
-		"migration"
-	],
-	"main": "dbMigrations.js",
-	"name": "larvitdbmigration",
-	"repository": {
-		"url": "https://github.com/larvit/larvitdbmigration",
-		"type": "git"
-	},
-	"version": "0.3.1",
-	"readmeFilename": "README.md",
-	"scripts": {},
-	"license": "MIT",
-	"maintainers": [{
-		"name": "lilleman",
-		"email": "lilleman@larvit.se"
-	}]
+  "author": {
+    "name": "Mikael 'Lilleman' Göransson",
+    "email": "lilleman@larvit.se",
+    "url": "http://github.com/larvit/larvitdbmigration"
+  },
+  "private": false,
+  "contributors": [],
+  "dependencies": {
+    "async": "^1.5.2",
+    "larvitdb": "^0.4.2",
+    "lodash": "^4.0.1",
+    "winston": "^2.1.1"
+  },
+  "description": "node.js database migration tool",
+  "devDependencies": {
+    "pre-git": "^3.3.0"
+  },
+  "pre-commit": [
+    "eslint ./"
+  ],
+  "keywords": [
+    "db",
+    "mariadb",
+    "migration"
+  ],
+  "main": "dbMigrations.js",
+  "name": "larvitdbmigration",
+  "repository": {
+    "url": "https://github.com/larvit/larvitdbmigration",
+    "type": "git"
+  },
+  "version": "0.3.2",
+  "readmeFilename": "README.md",
+  "scripts": {
+    "commit": "commit-wizard"
+  },
+  "license": "MIT",
+  "maintainers": [
+    {
+      "name": "lilleman",
+      "email": "lilleman@larvit.se"
+    }
+  ],
+  "config": {
+    "pre-git": {
+      "commit-msg": [],
+      "pre-commit": [],
+      "pre-push": [],
+      "post-commit": [],
+      "post-merge": []
+    }
+  }
 }
