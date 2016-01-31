@@ -10,6 +10,7 @@
     "async": "^1.5.2",
     "larvitdb": "^0.4.4",
     "lodash": "^4.0.1",
+    "mysql": "^2.10.2",
     "winston": "^2.1.1"
   },
   "description": "node.js database migration tool",
@@ -30,7 +31,7 @@
     "url": "https://github.com/larvit/larvitdbmigration",
     "type": "git"
   },
-  "version": "0.3.3",
+  "version": "0.3.4",
   "readmeFilename": "README.md",
   "scripts": {
     "commit": "commit-wizard"

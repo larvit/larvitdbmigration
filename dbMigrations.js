@@ -1,10 +1,12 @@
 'use strict';
 
 var async = require('async'),
-    exec  = require('child_process').exec,
+    mysql = require('mysql'),
     log   = require('winston'),
     fs    = require('fs'),
-    db    = require('larvitdb');
+    db    = require('larvitdb'),
+    _     = require('lodash'),
+    dbCon;
 
 exports = module.exports = function(options) {
 	options = options || {};
@@ -45,7 +47,7 @@ exports = module.exports = function(options) {
 			log.verbose('larvitdbmigration: runScripts() - Started with startVersion: "' + startVersion + '"');
 			fs.readdir(options.migrationScriptsPath, function(err, items) {
 				var sql = 'UPDATE `' + options.tableName + '` SET version = ' + parseInt(startVersion) + ';',
-				    cmd,
+				    localDbConf,
 				    i;
 
 				if (err) {
@@ -80,26 +82,13 @@ exports = module.exports = function(options) {
 					} else if (items[i] === startVersion + '.sql') {
 						log.info('larvitdbmigration: runScripts() - Found sql migration script #' + startVersion + ', running it now.');
 
-						cmd = 'mysql -u ' + db.conf.user + ' -p' + db.conf.password;
+						localDbConf                    = _.cloneDeep(db.conf);
+						localDbConf.multipleStatements = true;
+						dbCon                          = mysql.createConnection(localDbConf);
 
-						if (db.conf.host) {
-							cmd += ' -h ' + db.conf.host;
-						}
-
-						cmd += ' ' + db.conf.database + ' < ' + options.migrationScriptsPath + '/' + items[i];
-
-						exec(cmd, function(err, stdout, stderr) {
-							var customErr;
-
+						dbCon.query(fs.readFileSync(options.migrationScriptsPath + '/' + items[i]).toString(), function(err) {
 							if (err) {
 								cb(err);
-								return;
-							}
-
-							if (stderr) {
-								customErr = new Error('stderr is not empty: ' + stderr);
-								log.error('larvitdbmigration: ' + customErr.message);
-								cb(customErr);
 								return;
 							}
 
