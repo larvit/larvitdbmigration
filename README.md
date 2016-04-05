@@ -89,8 +89,6 @@ exports = module.exports = function(cb) {
 
 _IMPORTANT!_ SQL files will be ignored if a .js file exists.
 
-_ALSO IMPORTANT!_ SQL files require the mysql client to be installed on the host system.
-
 Create the file process.cwd()/<migrationScriptsPath>/1.sql with this content:
 
 ```SQL
