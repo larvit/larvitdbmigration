@@ -8,32 +8,36 @@
   "contributors": [],
   "dependencies": {
     "async": "^1.5.2",
-    "larvitdb": "^0.4.4",
-    "lodash": "^4.0.1",
-    "winston": "^2.1.1"
+    "larvitdb": "^1.0.0",
+    "lodash": "^4.7.0",
+    "winston": "^2.2.0"
   },
   "description": "node.js database migration tool",
   "devDependencies": {
-    "pre-git": "^3.3.0"
+    "eslint": "^2.6.0",
+    "mocha": "^2.4.5",
+    "pre-git": "^3.8.1"
   },
   "pre-commit": [
+    "npm test",
     "eslint ./"
   ],
   "keywords": [
     "db",
+    "mysql",
     "mariadb",
     "migration"
   ],
-  "main": "dbMigrations.js",
+  "main": "index.js",
   "name": "larvitdbmigration",
   "repository": {
     "url": "https://github.com/larvit/larvitdbmigration",
     "type": "git"
   },
-  "version": "0.3.3",
+  "version": "1.0.0",
   "readmeFilename": "README.md",
   "scripts": {
-    "commit": "commit-wizard"
+    "test": "mocha"
   },
   "license": "MIT",
   "maintainers": [

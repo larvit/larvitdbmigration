@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/larvit/larvitdbmigration.svg?branch=master)](https://travis-ci.org/larvit/larvitdbmigration) [![Dependencies](https://david-dm.org/larvit/larvitdbmigration.svg)](https://david-dm.org/larvit/larvitdbmigration.svg)
+
 # Database migration tool
 
 This is used to keep track of the database structure, and update it when need be via deploys.
@@ -6,7 +8,7 @@ At the moment only MariaDB(/MySQL) is supported.
 
 A table by default called db_version will be created, containing a single integer.
 
-Scripts will be placed by default in <application root>/dbmigration/<version>.js
+Scripts will be placed by default in process.cwd()/dbmigration/<version>.js
 
 Each migration script will be ran, and the db_version increased, until no more migration scripts exists.
 
@@ -19,11 +21,12 @@ In your application startup script, do something like this:
 ```javascript
 'use strict';
 
-var dbMigration = require('larvitdbmigration');
+const dbMigration = require('larvitdbmigration');
 
 dbMigration({
-	'host': '127.0.0.1',
-	'user': 'bar',
+	'host':     '127.0.0.1',
+	'user':     'bar',
+	'password': 'bar',
 	'database': 'bar'
 })(function(err) {
 	if (err) {
@@ -38,8 +41,8 @@ To use custom table name and/or script path, just change
 
 ```javascript
 dbMigration({
-	'host': '127.0.0.1',
-	'user': 'bar',
+	'host':     '127.0.0.1',
+	'user':     'bar',
 	'password': 'bar',
 	'database': 'bar'
 })(function(err) {
@@ -49,11 +52,11 @@ to
 
 ```javascript
 dbMigration({
-	'host': '127.0.0.1',
-	'user': 'bar',
-	'password': 'bar',
-	'database': 'bar',
-	'tableName': 'some_table',
+	'host':                 '127.0.0.1',
+	'user':                 'bar',
+	'password':             'bar',
+	'database':             'bar',
+	'tableName':            'some_table',
 	'migrationScriptsPath': './scripts_yo'
 })(function(err) {
 ```
@@ -70,16 +73,16 @@ And in the next deploy we'd like to change the column name "nisse" to "hasse". F
 
 #### Javascript
 
-Create the file <application root>/<migrationScriptsPath>/1.js with this content:
+Create the file process.cwd()/<migrationScriptsPath>/1.js with this content:
 
 ```javascript
 'use strict';
 
-var db = require('db');
+const db = require('db');
 
 exports = module.exports = function(cb) {
 	db.query('ALTER TABLE bloj CHANGE nisse hasse int(11);', cb);
-}
+};
 ```
 
 #### SQL
@@ -88,7 +91,7 @@ _IMPORTANT!_ SQL files will be ignored if a .js file exists.
 
 _ALSO IMPORTANT!_ SQL files require the mysql client to be installed on the host system.
 
-Create the file <application root>/<migrationScriptsPath>/1.sql with this content:
+Create the file process.cwd()/<migrationScriptsPath>/1.sql with this content:
 
 ```SQL
 ALTER TABLE bloj CHANGE nisse hasse int(11);

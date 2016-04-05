@@ -1,10 +1,10 @@
 'use strict';
 
-var async = require('async'),
-    exec  = require('child_process').exec,
-    log   = require('winston'),
-    fs    = require('fs'),
-    db    = require('larvitdb');
+const async = require('async'),
+      exec  = require('child_process').exec,
+      log   = require('winston'),
+      fs    = require('fs'),
+      db    = require('larvitdb');
 
 exports = module.exports = function(options) {
 	options = options || {};
@@ -38,15 +38,14 @@ exports = module.exports = function(options) {
 	}
 
 	return function(cb) {
-		var tasks = [],
-		    curVer;
+		const tasks = [];
+
+		let curVer;
 
 		function runScripts(startVersion, cb) {
 			log.verbose('larvitdbmigration: runScripts() - Started with startVersion: "' + startVersion + '"');
 			fs.readdir(options.migrationScriptsPath, function(err, items) {
-				var sql = 'UPDATE `' + options.tableName + '` SET version = ' + parseInt(startVersion) + ';',
-				    cmd,
-				    i;
+				const sql = 'UPDATE `' + options.tableName + '` SET version = ' + parseInt(startVersion) + ';';
 
 				if (err) {
 					log.warn('larvitdbmigration: runScripts() - Could not read migration script path "' + options.migrationScriptsPath + '"');
@@ -54,8 +53,7 @@ exports = module.exports = function(options) {
 					return;
 				}
 
-				i = 0;
-				while (items[i] !== undefined) {
+				for (let i = 0; items[i] !== undefined; i ++) {
 					if (items[i] === startVersion + '.js') {
 						log.info('larvitdbmigration: runScripts() - Found js migration script #' + startVersion + ', running it now.');
 						require(options.migrationScriptsPath + '/' + startVersion + '.js')(function(err) {
@@ -78,6 +76,8 @@ exports = module.exports = function(options) {
 
 						return;
 					} else if (items[i] === startVersion + '.sql') {
+						let cmd;
+
 						log.info('larvitdbmigration: runScripts() - Found sql migration script #' + startVersion + ', running it now.');
 
 						cmd = 'mysql -u ' + db.conf.user + ' -p' + db.conf.password;
@@ -89,15 +89,13 @@ exports = module.exports = function(options) {
 						cmd += ' ' + db.conf.database + ' < ' + options.migrationScriptsPath + '/' + items[i];
 
 						exec(cmd, function(err, stdout, stderr) {
-							var customErr;
-
 							if (err) {
 								cb(err);
 								return;
 							}
 
 							if (stderr) {
-								customErr = new Error('stderr is not empty: ' + stderr);
+								let customErr = new Error('stderr is not empty: ' + stderr);
 								log.error('larvitdbmigration: ' + customErr.message);
 								cb(customErr);
 								return;
@@ -116,8 +114,6 @@ exports = module.exports = function(options) {
 
 						return;
 					}
-
-					i ++;
 				}
 
 				// If we end up here, it means there are no more migration scripts to run
@@ -127,7 +123,7 @@ exports = module.exports = function(options) {
 
 		// Create table if it does not exist
 		tasks.push(function(cb) {
-			var sql = 'CREATE TABLE IF NOT EXISTS `' + options.tableName + '` (`id` tinyint(1) unsigned NOT NULL DEFAULT \'1\', `version` int(10) unsigned NOT NULL DEFAULT \'0\', `running` tinyint(3) unsigned NOT NULL DEFAULT \'0\', PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=ascii COLLATE=ascii_bin COMMENT=\'Used for automatic database versioning. Do not modify!\';';
+			const sql = 'CREATE TABLE IF NOT EXISTS `' + options.tableName + '` (`id` tinyint(1) unsigned NOT NULL DEFAULT \'1\', `version` int(10) unsigned NOT NULL DEFAULT \'0\', `running` tinyint(3) unsigned NOT NULL DEFAULT \'0\', PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=ascii COLLATE=ascii_bin COMMENT=\'Used for automatic database versioning. Do not modify!\';';
 			db.query(sql, cb);
 		});
 
