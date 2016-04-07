@@ -25,10 +25,32 @@ const dbMigration = require('larvitdbmigration');
 
 dbMigration({
 	'host':     '127.0.0.1',
-	'user':     'bar',
+	'user':     'foo',
 	'password': 'bar',
-	'database': 'bar'
+	'database': 'baz'
 })(function(err) {
+	if (err) {
+		throw err;
+	}
+
+	// Now database is migrated and ready for use!
+});
+```
+
+If larvitdb already is initiated someplace else, you can omit the database config, like this:
+
+```javascript
+const dbMigration = require('larvitdbmigration'),
+      db          = require('larvitdb');
+
+db.setup({
+	'host':     '127.0.0.1',
+	'user':     'foo',
+	'password': 'bar',
+	'database': 'baz'
+});
+
+dbMigration()(function(err) {
 	if (err) {
 		throw err;
 	}
