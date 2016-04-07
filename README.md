@@ -56,8 +56,8 @@ dbMigration({
 	'user':                 'bar',
 	'password':             'bar',
 	'database':             'bar',
-	'tableName':            'some_table',
-	'migrationScriptsPath': './scripts_yo'
+	'tableName':            'db_version',
+	'migrationScriptsPath': './dbmigration'
 })(function(err) {
 ```
 
