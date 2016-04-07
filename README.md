@@ -73,7 +73,7 @@ And in the next deploy we'd like to change the column name "nisse" to "hasse". F
 
 #### Javascript
 
-Create the file process.cwd()/<migrationScriptsPath>/1.js with this content:
+Create the file process.cwd()/migrationScriptsPath/1.js with this content:
 
 ```javascript
 'use strict';
@@ -89,7 +89,7 @@ exports = module.exports = function(cb) {
 
 _IMPORTANT!_ SQL files will be ignored if a .js file exists.
 
-Create the file process.cwd()/<migrationScriptsPath>/1.sql with this content:
+Create the file process.cwd()/migrationScriptsPath/1.sql with this content:
 
 ```SQL
 ALTER TABLE bloj CHANGE nisse hasse int(11);
