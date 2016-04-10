@@ -46,14 +46,14 @@ exports = module.exports = function(options) {
 		let curVer;
 
 		function runScripts(startVersion, cb) {
-			log.verbose('larvitdbmigration: runScripts() - Started with startVersion: "' + startVersion + '"');
+			log.verbose('larvitdbmigration: runScripts() - Started with startVersion: "' + startVersion + '" in path: "' + options.migrationScriptsPath + '"');
 			fs.readdir(options.migrationScriptsPath, function(err, items) {
 				const sql = 'UPDATE `' + options.tableName + '` SET version = ' + parseInt(startVersion) + ';';
 
 				let localDbConf;
 
 				if (err) {
-					log.warn('larvitdbmigration: runScripts() - Could not read migration script path "' + options.migrationScriptsPath + '"');
+					log.info('larvitdbmigration: runScripts() - Could not read migration script path "' + options.migrationScriptsPath + '"');
 					cb();
 					return;
 				}
