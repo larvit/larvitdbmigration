@@ -35,7 +35,7 @@
     "url": "https://github.com/larvit/larvitdbmigration",
     "type": "git"
   },
-  "version": "1.0.1",
+  "version": "1.0.2",
   "readmeFilename": "README.md",
   "scripts": {
     "test": "mocha"

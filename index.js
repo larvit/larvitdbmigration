@@ -30,7 +30,7 @@ exports = module.exports = function(options) {
 			}
 
 			if (res.changedRows === 0) {
-				log.info('larvitdbmigration: Another process is running the migrations, wait and try again soon.');
+				log.info('larvitdbmigration: Another process is running the migrations for table ' + options.tableName + ', wait and try again soon.');
 				setTimeout(function() {
 					getLock(cb);
 				}, 500);
@@ -46,7 +46,7 @@ exports = module.exports = function(options) {
 		let curVer;
 
 		function runScripts(startVersion, cb) {
-			log.verbose('larvitdbmigration: runScripts() - Started with startVersion: "' + startVersion + '" in path: "' + options.migrationScriptsPath + '"');
+			log.verbose('larvitdbmigration: runScripts() - Started with startVersion: "' + startVersion + '" in path: "' + options.migrationScriptsPath + '" for table ' + options.tableName);
 			fs.readdir(options.migrationScriptsPath, function(err, items) {
 				const sql = 'UPDATE `' + options.tableName + '` SET version = ' + parseInt(startVersion) + ';';
 
@@ -60,15 +60,15 @@ exports = module.exports = function(options) {
 
 				for (let i = 0; items[i] !== undefined; i ++) {
 					if (items[i] === startVersion + '.js') {
-						log.info('larvitdbmigration: runScripts() - Found js migration script #' + startVersion + ', running it now.');
+						log.info('larvitdbmigration: runScripts() - Found js migration script #' + startVersion + ' for table ' + options.tableName + ', running it now.');
 						require(options.migrationScriptsPath + '/' + startVersion + '.js')(function(err) {
 							if (err) {
-								log.error('larvitdbmigration: runScripts() - Got error running migration script #' + startVersion + ': ' + err.message);
+								log.error('larvitdbmigration: runScripts() - Got error running migration script ' + options.migrationScriptsPath + '/' + startVersion + '.js' + ': ' + err.message);
 								cb(err);
 								return;
 							}
 
-							log.info('larvitdbmigration: runScripts() - Js migration script #' + startVersion + ' ran. Updating database version and moving on.');
+							log.debug('larvitdbmigration: runScripts() - Js migration script #' + startVersion + ' for table ' + options.tableName + ' ran. Updating database version and moving on.');
 							db.query(sql, function(err) {
 								if (err) {
 									cb(err);
@@ -81,7 +81,7 @@ exports = module.exports = function(options) {
 
 						return;
 					} else if (items[i] === startVersion + '.sql') {
-						log.info('larvitdbmigration: runScripts() - Found sql migration script #' + startVersion + ', running it now.');
+						log.info('larvitdbmigration: runScripts() - Found sql migration script #' + startVersion + ' for table ' + options.tableName + ', running it now.');
 
 						localDbConf                    = _.cloneDeep(db.conf);
 						localDbConf.multipleStatements = true;
@@ -89,11 +89,12 @@ exports = module.exports = function(options) {
 
 						dbCon.query(fs.readFileSync(options.migrationScriptsPath + '/' + items[i]).toString(), function(err) {
 							if (err) {
+								log.error('larvitdbmigration: SQL error: ' + err.message);
 								cb(err);
 								return;
 							}
 
-							log.info('larvitdbmigration: runScripts() - Sql migration script #' + startVersion + ' ran. Updating database version and moving on.');
+							log.info('larvitdbmigration: runScripts() - Sql migration script #' + startVersion + ' for table ' + options.tableName + ' ran. Updating database version and moving on.');
 							db.query(sql, function(err) {
 								if (err) {
 									cb(err);
@@ -107,6 +108,8 @@ exports = module.exports = function(options) {
 						return;
 					}
 				}
+
+				log.info('larvitdbmigration: runScripts() - Database migrated and done. Final version is ' + (startVersion - 1) + ' in table ' + options.tableName);
 
 				// If we end up here, it means there are no more migration scripts to run
 				cb();
@@ -162,7 +165,7 @@ exports = module.exports = function(options) {
 
 				curVer = parseInt(rows[0].version);
 
-				log.info('larvitdbmigration: Current database version is ' + curVer);
+				log.info('larvitdbmigration: Current database version for table ' + options.tableName + ' is ' + curVer);
 
 				cb();
 			});
