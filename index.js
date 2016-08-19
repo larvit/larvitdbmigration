@@ -1,19 +1,19 @@
 'use strict';
 
-const async = require('async'),
-      mysql = require('mysql'),
-      log   = require('winston'),
-      fs    = require('fs'),
-      db    = require('larvitdb'),
-      _     = require('lodash');
+const	async	= require('async'),
+	mysql	= require('mysql'),
+	log	= require('winston'),
+	fs	= require('fs'),
+	db	= require('larvitdb'),
+	_	= require('lodash');
 
 let dbCon;
 
 exports = module.exports = function(options) {
 	options = options || {};
 
-	if (options.tableName            === undefined) options.tableName            = 'db_version';
-	if (options.migrationScriptsPath === undefined) options.migrationScriptsPath = './dbmigration';
+	if (options.tableName	=== undefined) options.tableName	= 'db_version';
+	if (options.migrationScriptsPath	=== undefined) options.migrationScriptsPath	= './dbmigration';
 
 	log.verbose('larvitdbmigration: Started with options: ' + JSON.stringify(options));
 
@@ -24,10 +24,7 @@ exports = module.exports = function(options) {
 
 	function getLock(cb) {
 		db.query('UPDATE `' + options.tableName + '` SET running = 1', function(err, res) {
-			if (err) {
-				cb(err);
-				return;
-			}
+			if (err) { cb(err); return; }
 
 			if (res.changedRows === 0) {
 				log.info('larvitdbmigration: Another process is running the migrations, wait and try again soon.');
@@ -88,17 +85,11 @@ exports = module.exports = function(options) {
 						dbCon                          = mysql.createConnection(localDbConf);
 
 						dbCon.query(fs.readFileSync(options.migrationScriptsPath + '/' + items[i]).toString(), function(err) {
-							if (err) {
-								cb(err);
-								return;
-							}
+							if (err) { cb(err); return; }
 
 							log.info('larvitdbmigration: runScripts() - Sql migration script #' + startVersion + ' ran. Updating database version and moving on.');
 							db.query(sql, function(err) {
-								if (err) {
-									cb(err);
-									return;
-								}
+								if (err) { cb(err); return; }
 
 								runScripts(parseInt(startVersion) + 1, cb);
 							});

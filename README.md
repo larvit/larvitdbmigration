@@ -24,10 +24,10 @@ In your application startup script, do something like this:
 const dbMigration = require('larvitdbmigration');
 
 dbMigration({
-	'host':     '127.0.0.1',
-	'user':     'foo',
-	'password': 'bar',
-	'database': 'baz'
+	'host':	'127.0.0.1',
+	'user':	'foo',
+	'password':	'bar',
+	'database':	'baz'
 })(function(err) {
 	if (err) {
 		throw err;
@@ -40,14 +40,14 @@ dbMigration({
 If larvitdb already is initiated someplace else, you can omit the database config, like this:
 
 ```javascript
-const dbMigration = require('larvitdbmigration'),
-      db          = require('larvitdb');
+const	dbMigration	= require('larvitdbmigration'),
+	db	= require('larvitdb');
 
 db.setup({
-	'host':     '127.0.0.1',
-	'user':     'foo',
-	'password': 'bar',
-	'database': 'baz'
+	'host':	'127.0.0.1',
+	'user':	'foo',
+	'password':	'bar',
+	'database':	'baz'
 });
 
 dbMigration()(function(err) {
@@ -63,10 +63,10 @@ To use custom table name and/or script path, just change
 
 ```javascript
 dbMigration({
-	'host':     '127.0.0.1',
-	'user':     'bar',
-	'password': 'bar',
-	'database': 'bar'
+	'host':	'127.0.0.1',
+	'user':	'bar',
+	'password':	'bar',
+	'database':	'bar'
 })(function(err) {
 ```
 
@@ -74,12 +74,12 @@ to
 
 ```javascript
 dbMigration({
-	'host':                 '127.0.0.1',
-	'user':                 'bar',
-	'password':             'bar',
-	'database':             'bar',
-	'tableName':            'db_version',
-	'migrationScriptsPath': './dbmigration'
+	'host':	'127.0.0.1',
+	'user':	'bar',
+	'password':	'bar',
+	'database':	'bar',
+	'tableName':	'db_version',
+	'migrationScriptsPath':	'./dbmigration'
 })(function(err) {
 ```
 

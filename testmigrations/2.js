@@ -1,7 +1,7 @@
 'use strict';
 
-const async = require('async'),
-      db    = require('larvitdb');
+const	async	= require('async'),
+	db	= require('larvitdb');
 
 exports = module.exports = function(cb) {
 	const tasks = [];

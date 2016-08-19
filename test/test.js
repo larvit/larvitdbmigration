@@ -1,24 +1,24 @@
 'use strict';
 
-const assert = require('assert'),
-      path   = require('path'),
-      log    = require('winston'),
-      db     = require('larvitdb'),
-      fs     = require('fs');
+const	assert	= require('assert'),
+	path	= require('path'),
+	log	= require('winston'),
+	db	= require('larvitdb'),
+	fs	= require('fs');
 
 let dbConf;
 
 // Set up winston
 log.remove(log.transports.Console);
 log.add(log.transports.Console, {
-	'level':     'warn',
-	'colorize':  true,
-	'timestamp': true,
-	'json':      false
+	'level':	'warn',
+	'colorize':	true,
+	'timestamp':	true,
+	'json':	false
 });
 
 before(function(done) {
-	let confFile;
+	let	confFile;
 
 	function checkEmptyDb() {
 		db.query('SHOW TABLES', function(err, rows) {
@@ -48,10 +48,11 @@ before(function(done) {
 		});
 	}
 
-	if (process.argv[3] === undefined)
+	if (process.argv[3] === undefined) {
 		confFile = __dirname + '/../config/db_test.json';
-	else
+	} else {
 		confFile = process.argv[3].split('=')[1];
+	}
 
 	log.verbose('DB config file: "' + confFile + '"');
 
@@ -62,8 +63,7 @@ before(function(done) {
 			log.info('Failed to find config file "' + confFile + '", retrying with "' + altConfFile + '"');
 
 			fs.stat(altConfFile, function(err) {
-				if (err)
-					assert( ! err, 'fs.stat failed: ' + err.message);
+				assert( ! err, 'fs.stat failed: ' + err.message);
 
 				if ( ! err) {
 					dbConf = require(altConfFile);
@@ -90,15 +90,29 @@ describe('Migrations', function() {
 		dbMigrations = require('../index.js')(dbConf);
 
 		dbMigrations(function(err) {
+			console.log(err);
 			assert( ! err, 'err should be negative');
 
-			db.query('SELECT * FROM bloj', function(err, rows) {
-				assert( ! err, 'err should be negative');
-
-				assert.deepEqual(rows.length, 1);
-				assert.deepEqual(rows[0].hasse, 42);
-				done();
-			});
+			done();
 		});
 	});
+
+	it('Should fetch some data form a migrated table', function(done) {
+		db.query('SELECT * FROM bloj', function(err, rows) {
+			assert( ! err, 'err should be negative');
+
+			assert.deepEqual(rows.length, 1);
+			assert.deepEqual(rows[0].hasse, 42);
+			done();
+		});
+	});
+
+	/*it('Make sure function works', function(done) {
+		db.query('SELECT multi_two(4)', function(err, rows) {
+			assert( ! err, 'err should be negative');
+
+			assert.deepEqual(rows[0], 8);
+			done();
+		});
+	});*/
 });
