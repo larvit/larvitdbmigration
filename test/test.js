@@ -90,7 +90,6 @@ describe('Migrations', function() {
 		dbMigrations = require('../index.js')(dbConf);
 
 		dbMigrations(function(err) {
-			console.log(err);
 			assert( ! err, 'err should be negative');
 
 			done();
