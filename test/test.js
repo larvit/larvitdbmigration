@@ -108,12 +108,12 @@ describe('Migrations', function() {
 		});
 	});
 
-	/*it('Make sure function works', function(done) {
-		db.query('SELECT multi_two(4)', function(err, rows) {
+	it('Make sure function works', function(done) {
+		db.query('SELECT multi_two(4) AS foo', function(err, rows) {
 			assert( ! err, 'err should be negative');
 
-			assert.deepEqual(rows[0], 8);
+			assert.deepEqual(rows[0].foo, 8);
 			done();
 		});
-	});*/
+	});
 });

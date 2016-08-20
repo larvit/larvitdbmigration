@@ -1,9 +1,7 @@
 DROP FUNCTION IF EXISTS multi_two;
-delimiter $$
 CREATE FUNCTION multi_two (x INT) RETURNS INT
 	DETERMINISTIC
 	BEGIN
-		return x * 2;
-	end
-$$
-delimiter ;
+		RETURN x * 2;
+	END
+;
