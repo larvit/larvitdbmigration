@@ -67,10 +67,7 @@ exports = module.exports = function(options) {
 
 							log.debug('larvitdbmigration: runScripts() - Js migration script #' + startVersion + ' for table ' + options.tableName + ' ran. Updating database version and moving on.');
 							db.query(sql, function(err) {
-								if (err) {
-									cb(err);
-									return;
-								}
+								if (err) { cb(err); return; }
 
 								runScripts(parseInt(startVersion) + 1, cb);
 							});
@@ -119,18 +116,12 @@ exports = module.exports = function(options) {
 		// Update old version of table (for seamless updating of old versions of this module)
 		tasks.push(function(cb) {
 			db.query('DESCRIBE `' + options.tableName + '`', function(err, rows) {
-				if (err) {
-					cb(err);
-					return;
-				}
+				if (err) { cb(err); return; }
 
 				if (rows.length === 2 && rows[0].Field === 'version' && rows[1].Field === 'running') {
 					// Old version detected! Update!
 					db.query('ALTER TABLE `' + options.tableName + '` ADD `id` tinyint(1) unsigned NOT NULL DEFAULT \'1\' FIRST;', function(err) {
-						if (err) {
-							cb(err);
-							return;
-						}
+						if (err) { cb(err); return; }
 
 						db.query('ALTER TABLE `' + options.tableName + '` ADD PRIMARY KEY `id` (`id`);', cb);
 					});
@@ -152,10 +143,7 @@ exports = module.exports = function(options) {
 		// Get current version
 		tasks.push(function(cb) {
 			db.query('SELECT version FROM `' + options.tableName + '`;', function(err, rows) {
-				if (err) {
-					cb(err);
-					return;
-				}
+				if (err) { cb(err); return; }
 
 				curVer = parseInt(rows[0].version);
 
