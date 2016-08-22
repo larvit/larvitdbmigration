@@ -7,16 +7,16 @@
   "private": false,
   "contributors": [],
   "dependencies": {
-    "async": "^1.5.2",
-    "larvitdb": "^1.2.0",
+    "async": "^2.0.1",
+    "larvitdb": "^1.2.1",
     "lodash": "^4.7.0",
-    "mysql": "^2.10.2",
+    "mysql2": "^1.0.0-rc.11",
     "winston": "^2.2.0"
   },
   "description": "node.js database migration tool",
   "devDependencies": {
-    "eslint": "^2.6.0",
-    "mocha": "^2.4.5",
+    "eslint": "^3.3.1",
+    "mocha": "^3.0.2",
     "pre-git": "^3.8.1"
   },
   "pre-commit": [
@@ -35,7 +35,7 @@
     "url": "https://github.com/larvit/larvitdbmigration",
     "type": "git"
   },
-  "version": "1.1.1",
+  "version": "1.2.0",
   "readmeFilename": "README.md",
   "scripts": {
     "test": "mocha"

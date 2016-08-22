@@ -1,7 +1,7 @@
 'use strict';
 
 const	async	= require('async'),
-	mysql	= require('mysql'),
+	mysql	= require('mysql2'),
 	log	= require('winston'),
 	fs	= require('fs'),
 	db	= require('larvitdb'),
