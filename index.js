@@ -23,18 +23,66 @@ exports = module.exports = function(options) {
 	}
 
 	function getLock(cb) {
-		db.query('UPDATE `' + options.tableName + '` SET running = 1', function(err, res) {
-			if (err) { cb(err); return; }
+		const	tasks	= [];
 
-			if (res.changedRows === 0) {
-				log.info('larvitdbmigration: Another process is running the migrations for table ' + options.tableName + ', wait and try again soon.');
-				setTimeout(function() {
-					getLock(cb);
-				}, 500);
-			} else {
-				cb();
-			}
+		let dbCon;
+
+		tasks.push(function(cb) {
+			db.pool.getConnection(function(err, res) {
+				if (err) {
+					log.error('larvitdbmigration: getLock() - getConnection() err: ' + err.message);
+				}
+
+				dbCon = res;
+				cb(err);
+			});
 		});
+
+		tasks.push(function(cb) {
+			dbCon.query('LOCK TABLES `' + options.tableName + '` WRITE;', cb);
+		});
+
+		tasks.push(function(cb) {
+			dbCon.query('SELECT running FROM `' + options.tableName + '`', function(err, rows) {
+				if (err) {
+					log.error('larvitdbmigration: getLock() - SQL err: ' + err.message);
+					cb(err);
+					return;
+				}
+
+				if (rows.length === 0) {
+					const err = 'No database records in ' + options.tableName;
+
+					log.error('larvitdbmigration: getLock() - ' + err.message);
+					cb(err);
+					return;
+				}
+
+				if (rows[0].running === 0) {
+					cb();
+				} else {
+					log.info('larvitdbmigration: getLock() - Another process is running the migrations for table ' + options.tableName + ', wait and try again soon.');
+					setTimeout(function() {
+						getLock(cb);
+					}, 500);
+				}
+			});
+		});
+
+		tasks.push(function(cb) {
+			dbCon.query('UPDATE `' + options.tableName + '` SET running = 1', cb);
+		});
+
+		tasks.push(function(cb) {
+			dbCon.query('UNLOCK TABLES;', cb);
+		});
+
+		tasks.push(function(cb) {
+			dbCon.release();
+			cb();
+		});
+
+		async.series(tasks, cb);
 	}
 
 	return function(cb) {
@@ -83,7 +131,7 @@ exports = module.exports = function(options) {
 
 						dbCon.query(fs.readFileSync(options.migrationScriptsPath + '/' + items[i]).toString(), function(err) {
 							if (err) {
-								log.error('larvitdbmigration: SQL error: ' + err.message);
+								log.error('larvitdbmigration: Migration file: ' + items[i] + ' SQL error: ' + err.message);
 								cb(err);
 								return;
 							}

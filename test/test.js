@@ -84,6 +84,9 @@ after(function(done) {
 });
 
 describe('Migrations', function() {
+	this.timeout(10000);
+	this.slow(300);
+
 	it('Run them', function(done) {
 		let dbMigrations;
 
