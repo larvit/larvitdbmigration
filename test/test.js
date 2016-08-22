@@ -116,4 +116,13 @@ describe('Migrations', function() {
 			done();
 		});
 	});
+
+	it('Make sure function nr 2 works', function(done) {
+		db.query('SELECT multi_three(4) AS foo', function(err, rows) {
+			assert( ! err, 'err should be negative');
+
+			assert.deepEqual(rows[0].foo, 12);
+			done();
+		});
+	});
 });
