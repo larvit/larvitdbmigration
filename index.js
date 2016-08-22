@@ -61,10 +61,18 @@ exports = module.exports = function(options) {
 				if (rows[0].running === 0) {
 					cb();
 				} else {
-					log.info('larvitdbmigration: getLock() - Another process is running the migrations for table ' + options.tableName + ', wait and try again soon.');
-					setTimeout(function() {
-						getLock(cb);
-					}, 500);
+					dbCon.query('UNLOCK TABLES;', function(err) {
+						if (err) {
+							log.error('larvitdbmigration: getLock() - SQL err: ' + err.message);
+							cb(err);
+							return;
+						}
+
+						log.info('larvitdbmigration: getLock() - Another process is running the migrations for table ' + options.tableName + ', wait and try again soon.');
+						setTimeout(function() {
+							getLock(cb);
+						}, 500);
+					});
 				}
 			});
 		});
