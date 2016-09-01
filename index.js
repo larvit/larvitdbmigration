@@ -23,74 +23,79 @@ exports = module.exports = function(options) {
 	}
 
 	function getLock(cb) {
-		const	tasks	= [];
+		try {
+			const	tasks	= [];
 
-		let dbCon;
+			let dbCon;
 
-		tasks.push(function(cb) {
-			db.pool.getConnection(function(err, res) {
-				if (err) {
-					log.error('larvitdbmigration: getLock() - getConnection() err: ' + err.message);
-				}
+			tasks.push(function(cb) {
+				db.pool.getConnection(function(err, res) {
+					if (err) {
+						log.error('larvitdbmigration: getLock() - getConnection() err: ' + err.message);
+					}
 
-				dbCon = res;
-				cb(err);
-			});
-		});
-
-		tasks.push(function(cb) {
-			dbCon.query('LOCK TABLES `' + options.tableName + '` WRITE;', cb);
-		});
-
-		tasks.push(function(cb) {
-			dbCon.query('SELECT running FROM `' + options.tableName + '`', function(err, rows) {
-				if (err) {
-					log.error('larvitdbmigration: getLock() - SQL err: ' + err.message);
+					dbCon = res;
 					cb(err);
-					return;
-				}
-
-				if (rows.length === 0) {
-					const err = 'No database records in ' + options.tableName;
-
-					log.error('larvitdbmigration: getLock() - ' + err.message);
-					cb(err);
-					return;
-				}
-
-				if (rows[0].running === 0) {
-					cb();
-				} else {
-					dbCon.query('UNLOCK TABLES;', function(err) {
-						if (err) {
-							log.error('larvitdbmigration: getLock() - SQL err: ' + err.message);
-							cb(err);
-							return;
-						}
-
-						log.info('larvitdbmigration: getLock() - Another process is running the migrations for table ' + options.tableName + ', wait and try again soon.');
-						setTimeout(function() {
-							getLock(cb);
-						}, 500);
-					});
-				}
+				});
 			});
-		});
 
-		tasks.push(function(cb) {
-			dbCon.query('UPDATE `' + options.tableName + '` SET running = 1', cb);
-		});
+			tasks.push(function(cb) {
+				dbCon.query('LOCK TABLES `' + options.tableName + '` WRITE;', cb);
+			});
 
-		tasks.push(function(cb) {
-			dbCon.query('UNLOCK TABLES;', cb);
-		});
+			tasks.push(function(cb) {
+				dbCon.query('SELECT running FROM `' + options.tableName + '`', function(err, rows) {
+					if (err) {
+						log.error('larvitdbmigration: getLock() - SQL err: ' + err.message);
+						cb(err);
+						return;
+					}
 
-		tasks.push(function(cb) {
-			dbCon.release();
-			cb();
-		});
+					if (rows.length === 0) {
+						const err = 'No database records in ' + options.tableName;
 
-		async.series(tasks, cb);
+						log.error('larvitdbmigration: getLock() - ' + err.message);
+						cb(err);
+						return;
+					}
+
+					if (rows[0].running === 0) {
+						cb();
+					} else {
+						dbCon.query('UNLOCK TABLES;', function(err) {
+							if (err) {
+								log.error('larvitdbmigration: getLock() - SQL err: ' + err.message);
+								cb(err);
+								return;
+							}
+
+							log.info('larvitdbmigration: getLock() - Another process is running the migrations for table ' + options.tableName + ', wait and try again soon.');
+							setTimeout(function() {
+								getLock(cb);
+							}, 500);
+						});
+					}
+				});
+			});
+
+			tasks.push(function(cb) {
+				dbCon.query('UPDATE `' + options.tableName + '` SET running = 1', cb);
+			});
+
+			tasks.push(function(cb) {
+				dbCon.query('UNLOCK TABLES;', cb);
+			});
+
+			tasks.push(function(cb) {
+				dbCon.release();
+				cb();
+			});
+
+			async.series(tasks, cb);
+		} catch(err) {
+			log.error('larvitdbmigration: getLock() - Error from driver: ' + err.message);
+			cb(err);
+		}
 	}
 
 	return function(cb) {
@@ -133,9 +138,9 @@ exports = module.exports = function(options) {
 					} else if (items[i] === startVersion + '.sql') {
 						log.info('larvitdbmigration: runScripts() - Found sql migration script #' + startVersion + ' for table ' + options.tableName + ', running it now.');
 
-						localDbConf                    = _.cloneDeep(db.conf);
-						localDbConf.multipleStatements = true;
-						dbCon                          = mysql.createConnection(localDbConf);
+						localDbConf	= _.cloneDeep(db.conf);
+						localDbConf.multipleStatements	= true;
+						dbCon	= mysql.createConnection(localDbConf);
 
 						dbCon.query(fs.readFileSync(options.migrationScriptsPath + '/' + items[i]).toString(), function(err) {
 							if (err) {
@@ -211,7 +216,12 @@ exports = module.exports = function(options) {
 
 		// Run scripts
 		tasks.push(function(cb) {
-			runScripts(curVer + 1, cb);
+			try {
+				runScripts(curVer + 1, cb);
+			} catch(err) {
+				log.error('larvitdbmigration: Error from driver: ' + err.message);
+				cb(err);
+			}
 		});
 
 		// Unlock table
