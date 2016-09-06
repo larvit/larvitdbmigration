@@ -7,8 +7,6 @@ const	async	= require('async'),
 	db	= require('larvitdb'),
 	_	= require('lodash');
 
-let dbCon;
-
 exports = module.exports = function(options) {
 	options = options || {};
 
@@ -105,67 +103,77 @@ exports = module.exports = function(options) {
 
 		function runScripts(startVersion, cb) {
 			log.verbose('larvitdbmigration: runScripts() - Started with startVersion: "' + startVersion + '" in path: "' + options.migrationScriptsPath + '" for table ' + options.tableName);
-			fs.readdir(options.migrationScriptsPath, function(err, items) {
-				const sql = 'UPDATE `' + options.tableName + '` SET version = ' + parseInt(startVersion) + ';';
 
-				let localDbConf;
+			try {
+				fs.readdir(options.migrationScriptsPath, function(err, items) {
+					const sql = 'UPDATE `' + options.tableName + '` SET version = ' + parseInt(startVersion) + ';';
 
-				if (err) {
-					log.info('larvitdbmigration: runScripts() - Could not read migration script path "' + options.migrationScriptsPath + '"');
-					cb();
-					return;
-				}
+					let localDbConf;
 
-				for (let i = 0; items[i] !== undefined; i ++) {
-					if (items[i] === startVersion + '.js') {
-						log.info('larvitdbmigration: runScripts() - Found js migration script #' + startVersion + ' for table ' + options.tableName + ', running it now.');
-						require(options.migrationScriptsPath + '/' + startVersion + '.js')(function(err) {
-							if (err) {
-								log.error('larvitdbmigration: runScripts() - Got error running migration script ' + options.migrationScriptsPath + '/' + startVersion + '.js' + ': ' + err.message);
-								cb(err);
-								return;
-							}
-
-							log.debug('larvitdbmigration: runScripts() - Js migration script #' + startVersion + ' for table ' + options.tableName + ' ran. Updating database version and moving on.');
-							db.query(sql, function(err) {
-								if (err) { cb(err); return; }
-
-								runScripts(parseInt(startVersion) + 1, cb);
-							});
-						});
-
-						return;
-					} else if (items[i] === startVersion + '.sql') {
-						log.info('larvitdbmigration: runScripts() - Found sql migration script #' + startVersion + ' for table ' + options.tableName + ', running it now.');
-
-						localDbConf	= _.cloneDeep(db.conf);
-						localDbConf.multipleStatements	= true;
-						dbCon	= mysql.createConnection(localDbConf);
-
-						dbCon.query(fs.readFileSync(options.migrationScriptsPath + '/' + items[i]).toString(), function(err) {
-							if (err) {
-								log.error('larvitdbmigration: Migration file: ' + items[i] + ' SQL error: ' + err.message);
-								cb(err);
-								return;
-							}
-
-							log.info('larvitdbmigration: runScripts() - Sql migration script #' + startVersion + ' for table ' + options.tableName + ' ran. Updating database version and moving on.');
-							db.query(sql, function(err) {
-								if (err) { cb(err); return; }
-
-								runScripts(parseInt(startVersion) + 1, cb);
-							});
-						});
-
+					if (err) {
+						log.info('larvitdbmigration: runScripts() - Could not read migration script path "' + options.migrationScriptsPath + '"');
+						cb();
 						return;
 					}
-				}
 
-				log.info('larvitdbmigration: runScripts() - Database migrated and done. Final version is ' + (startVersion - 1) + ' in table ' + options.tableName);
+					for (let i = 0; items[i] !== undefined; i ++) {
+						if (items[i] === startVersion + '.js') {
+							log.info('larvitdbmigration: runScripts() - Found js migration script #' + startVersion + ' for table ' + options.tableName + ', running it now.');
+							require(options.migrationScriptsPath + '/' + startVersion + '.js')(function(err) {
+								if (err) {
+									log.error('larvitdbmigration: runScripts() - Got error running migration script ' + options.migrationScriptsPath + '/' + startVersion + '.js' + ': ' + err.message);
+									cb(err);
+									return;
+								}
 
-				// If we end up here, it means there are no more migration scripts to run
-				cb();
-			});
+								log.debug('larvitdbmigration: runScripts() - Js migration script #' + startVersion + ' for table ' + options.tableName + ' ran. Updating database version and moving on.');
+								db.query(sql, function(err) {
+									if (err) { cb(err); return; }
+
+									runScripts(parseInt(startVersion) + 1, cb);
+								});
+							});
+
+							return;
+						} else if (items[i] === startVersion + '.sql') {
+							let dbCon;
+
+							log.info('larvitdbmigration: runScripts() - Found sql migration script #' + startVersion + ' for table ' + options.tableName + ', running it now.');
+
+							localDbConf	= _.cloneDeep(db.conf);
+							localDbConf.multipleStatements	= true;
+							dbCon	= mysql.createConnection(localDbConf);
+
+							dbCon.query(fs.readFileSync(options.migrationScriptsPath + '/' + items[i]).toString(), function(err) {
+								if (err) {
+									log.error('larvitdbmigration: Migration file: ' + items[i] + ' SQL error: ' + err.message);
+									cb(err);
+									return;
+								}
+
+								log.info('larvitdbmigration: runScripts() - Sql migration script #' + startVersion + ' for table ' + options.tableName + ' ran. Updating database version and moving on.');
+								db.query(sql, function(err) {
+									if (err) { cb(err); return; }
+
+									dbCon.end();
+
+									runScripts(parseInt(startVersion) + 1, cb);
+								});
+							});
+
+							return;
+						}
+					}
+
+					log.info('larvitdbmigration: runScripts() - Database migrated and done. Final version is ' + (startVersion - 1) + ' in table ' + options.tableName);
+
+					// If we end up here, it means there are no more migration scripts to run
+					cb();
+				});
+			} catch(err) {
+				log.error('larvitdbmigration: runScripts() - Uncaught error: ' + err.message);
+				cb(err);
+			}
 		}
 
 		// Create table if it does not exist
