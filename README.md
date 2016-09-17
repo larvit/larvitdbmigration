@@ -12,6 +12,12 @@ Scripts will be placed by default in process.cwd()/dbmigration/<version>.js
 
 Each migration script will be ran, and the db_version increased, until no more migration scripts exists.
 
+## Installation
+
+```bash
+npm i --save larvitdbmigration
+```
+
 ## Usage
 
 ### Application startup script
