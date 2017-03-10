@@ -45,7 +45,7 @@ db.setup({
 
 options.dbType	= 'larvitdb';
 options.dbDriver	= db;
-options.tableName	= 'db_version';	// Optional - alias for indexName
+options.tableName	= 'db_version';	// Optional - used as index for elasticsearch
 options.migrationScriptsPath	= './dbmigration';	// Optional
 
 dbMigration(options)(function (err) {

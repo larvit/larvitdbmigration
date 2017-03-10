@@ -1,6 +1,7 @@
 'use strict';
 
 const	elasticsearch	= require('elasticsearch'),
+	DbMigration	= require(__dirname + '/../index.js'),
 	assert	= require('assert'),
 	lUtils	= require('larvitutils'),
 	async	= require('async'),
@@ -144,9 +145,11 @@ before(function (done) {
 						process.exit(1);
 					}
 
+					esConf = require(altEsConfFile);
 					runEsSetup(altEsConfFile);
 				});
 			} else {
+				esConf = require(esConfFile);
 				runEsSetup(esConfFile);
 			}
 		});
@@ -172,19 +175,21 @@ after(function (done) {
 	});
 });
 
-describe('Migrations', function () {
+describe('MariaDB migrations', function () {
 	this.timeout(10000);
 	this.slow(300);
 
 	it('Run them', function (done) {
-		let dbMigrations;
+		let	dbMigrations;
 
-		mariaDbConf.migrationScriptsPath = path.join(__dirname, '../testmigrations_mariadb');
+		mariaDbConf.migrationScriptsPath	= path.join(__dirname, '../testmigrations_mariadb');
+		mariaDbConf.dbType	= 'larvitdb';
+		mariaDbConf.dbDriver	= db;
 
-		dbMigrations = require('../index.js')(mariaDbConf);
+		dbMigrations = new DbMigration(mariaDbConf);
 
-		dbMigrations(function (err) {
-			assert( ! err, 'err should be negative');
+		dbMigrations.run(function (err) {
+			if (err) throw err;
 
 			done();
 		});
@@ -192,28 +197,79 @@ describe('Migrations', function () {
 
 	it('Should fetch some data form a migrated table', function (done) {
 		db.query('SELECT * FROM bloj', function (err, rows) {
-			assert( ! err, 'err should be negative');
+			if (err) throw err;
 
-			assert.deepStrictEqual(rows.length, 1);
-			assert.deepStrictEqual(rows[0].hasse, 42);
+			assert.deepStrictEqual(rows.length,	1);
+			assert.deepStrictEqual(rows[0].hasse,	42);
 			done();
 		});
 	});
 
 	it('Make sure function works', function (done) {
 		db.query('SELECT multi_two(4) AS foo', function (err, rows) {
-			assert( ! err, 'err should be negative');
+			if (err) throw err;
 
-			assert.deepStrictEqual(rows[0].foo, 8);
+			assert.deepStrictEqual(rows[0].foo,	8);
 			done();
 		});
 	});
 
 	it('Make sure function nr 2 works', function (done) {
 		db.query('SELECT multi_three(4) AS foo', function (err, rows) {
-			assert( ! err, 'err should be negative');
+			if (err) throw err;
 
-			assert.deepStrictEqual(rows[0].foo, 12);
+			assert.deepStrictEqual(rows[0].foo,	12);
+			done();
+		});
+	});
+});
+
+describe('Elasticsearch migrations', function () {
+	this.timeout(10000);
+	this.slow(300);
+
+	it('Run them', function (done) {
+		let	dbMigrations;
+
+		esConf.migrationScriptsPath	= path.join(__dirname, '../testmigrations_elasticsearch');
+		esConf.dbType	= 'elasticsearch';
+		esConf.dbDriver	= es;
+
+console.log(es);
+
+		dbMigrations = new DbMigration(esConf);
+
+		dbMigrations.run(function (err) {
+			if (err) throw err;
+
+			done();
+		});
+	});
+
+	it('Should fetch some data form a migrated table', function (done) {
+		db.query('SELECT * FROM bloj', function (err, rows) {
+			if (err) throw err;
+
+			assert.deepStrictEqual(rows.length,	1);
+			assert.deepStrictEqual(rows[0].hasse,	42);
+			done();
+		});
+	});
+
+	it('Make sure function works', function (done) {
+		db.query('SELECT multi_two(4) AS foo', function (err, rows) {
+			if (err) throw err;
+
+			assert.deepStrictEqual(rows[0].foo,	8);
+			done();
+		});
+	});
+
+	it('Make sure function nr 2 works', function (done) {
+		db.query('SELECT multi_three(4) AS foo', function (err, rows) {
+			if (err) throw err;
+
+			assert.deepStrictEqual(rows[0].foo,	12);
 			done();
 		});
 	});
