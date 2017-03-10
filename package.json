@@ -8,7 +8,9 @@
   "contributors": [],
   "dependencies": {
     "async": "^2.0.1",
+    "elasticsearch": "^12.1.3",
     "larvitdb": "^1.2.2",
+    "larvitutils": "^1.1.1",
     "lodash": "^4.7.0",
     "mysql2": "^1.0.0-rc.11",
     "winston": "^2.2.0"
@@ -16,13 +18,15 @@
   "description": "node.js database migration tool",
   "devDependencies": {
     "eslint": "^3.4.0",
-    "mocha": "^3.0.2"
+    "mocha": "^3.0.2",
+    "mocha-eslint": "^3.0.1"
   },
   "keywords": [
     "db",
     "mysql",
     "mariadb",
-    "migration"
+    "migration",
+    "elasticsearch"
   ],
   "main": "index.js",
   "name": "larvitdbmigration",
@@ -30,7 +34,7 @@
     "url": "https://github.com/larvit/larvitdbmigration",
     "type": "git"
   },
-  "version": "1.3.3",
+  "version": "2.0.0",
   "readmeFilename": "README.md",
   "scripts": {
     "test": "mocha"

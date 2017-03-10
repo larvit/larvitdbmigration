@@ -4,9 +4,12 @@
 
 This is used to keep track of the database structure, and update it when need be via deploys.
 
-At the moment only MariaDB(/MySQL) is supported.
+Supported databases:
 
-A table by default called db_version will be created, containing a single integer.
+* MariaDB(/MySQL)
+* Elasticsearch
+
+A table/index by default called db_version will be created, containing a single integer.
 
 Scripts will be placed by default in process.cwd()/dbmigration/<version>.js
 
@@ -24,29 +27,13 @@ npm i --save larvitdbmigration
 
 In your application startup script, do something like this:
 
+#### MariaDb and MySQL
+
 ```javascript
 'use strict';
 
-const dbMigration = require('larvitdbmigration');
-
-dbMigration({
-	'host':	'127.0.0.1',
-	'user':	'foo',
-	'password':	'bar',
-	'database':	'baz'
-})(function(err) {
-	if (err) {
-		throw err;
-	}
-
-	// Now database is migrated and ready for use!
-});
-```
-
-If larvitdb already is initiated someplace else, you can omit the database config, like this:
-
-```javascript
 const	dbMigration	= require('larvitdbmigration'),
+	options	= {},
 	db	= require('larvitdb');
 
 db.setup({
@@ -56,7 +43,12 @@ db.setup({
 	'database':	'baz'
 });
 
-dbMigration()(function(err) {
+options.dbType	= 'larvitdb';
+options.dbDriver	= db;
+options.tableName	= 'db_version';	// Optional - alias for indexName
+options.migrationScriptsPath	= './dbmigration';	// Optional
+
+dbMigration(options)(function (err) {
 	if (err) {
 		throw err;
 	}
@@ -65,28 +57,32 @@ dbMigration()(function(err) {
 });
 ```
 
-To use custom table name and/or script path, just change
+#### Elasticsearch
 
 ```javascript
-dbMigration({
-	'host':	'127.0.0.1',
-	'user':	'bar',
-	'password':	'bar',
-	'database':	'bar'
-})(function(err) {
-```
+'use strict';
 
-to
+const	elasticsearch	= require('elasticsearch'),
+	DbMigration	= require('larvitdbmigration'),
+	options	= {},
+	es	= new elasticsearch.Client({'host': '127.0.0.1:9200'});
 
-```javascript
-dbMigration({
-	'host':	'127.0.0.1',
-	'user':	'bar',
-	'password':	'bar',
-	'database':	'bar',
-	'tableName':	'db_version',
-	'migrationScriptsPath':	'./dbmigration'
-})(function(err) {
+let	dbMigration;
+
+options.dbType	= 'elasticsearch';
+options.dbDriver	= es;
+options.indexName	= 'db_version';	// Optional - alias for tableName
+options.migrationScriptsPath	= './dbmigration';	// Optional
+
+dbMigration	= new DbMigration(options);
+
+dbMigration.run(function (err) {
+	if (err) {
+		throw err;
+	}
+
+	// Now database is migrated and ready for use!
+});
 ```
 
 ### Example migration scripts
@@ -99,17 +95,44 @@ CREATE TABLE bloj (nisse int(11));
 
 And in the next deploy we'd like to change the column name "nisse" to "hasse". For this you can do one of two methods:
 
-#### Javascript
+#### MariaDB / MySQL, Javascript
 
 Create the file process.cwd()/migrationScriptsPath/1.js with this content:
 
 ```javascript
 'use strict';
 
-const db = require('db');
+exports = module.exports = function (cb) {
+	const	db	= this.dbDriver;
 
-exports = module.exports = function(cb) {
 	db.query('ALTER TABLE bloj CHANGE nisse hasse int(11);', cb);
+};
+```
+
+#### Elasticsearch
+
+Create the file process.cwd()/migrationScriptsPath/1.js with this content:
+
+```javascript
+'use strict';
+
+exports = module.exports = function (cb) {
+	const	es	= this.dbDriver;
+
+	es.indices.putMapping({
+		'index':	'foo',
+		'type':	'bar',
+		'body': {
+			'bar': {
+				'properties': {
+					'names': {
+						'type':	'string',
+						'position_increment_gap':	100
+					}
+				}
+			}
+		}
+	}, cb);
 };
 ```
 
