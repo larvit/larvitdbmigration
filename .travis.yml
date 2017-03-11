@@ -1,4 +1,6 @@
+dist: trusty
 language: node_js
+sudo: true
 
 env:
   - CXX=g++-4.8
@@ -7,13 +9,16 @@ node_js:
   - 4
   - 5
   - 6
+  - 7
 
 notifications:
   email:
     - lilleman@larvit.se
+    - tobias@nublar.se
 
 before_install:
   - $CXX --version
+  - curl -O https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-5.1.1.deb && sudo dpkg -i --force-confnew elasticsearch-5.1.1.deb && sudo service elasticsearch start
 
 install:
   - if [[ $TRAVIS_OS_NAME == "linux" ]]; then export CXX=g++-4.8; fi
@@ -30,10 +35,7 @@ addons:
     - ubuntu-toolchain-r-test
     packages:
     - g++-4.8
+    - oracle-java8-set-default
 
-
-#addons:
-#  mariadb:
-#    - 5.5
-#    - 10.0
-#    - 10.1
+before_script:
+  - sleep 15
