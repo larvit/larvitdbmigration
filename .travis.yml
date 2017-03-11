@@ -38,4 +38,5 @@ addons:
     - oracle-java8-set-default
 
 before_script:
+  - mysql -e "create database IF NOT EXISTS test;" -uroot
   - sleep 15
