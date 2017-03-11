@@ -183,7 +183,7 @@ function runScripts(startVersion, cb) {
 			for (let i = 0; items[i] !== undefined; i ++) {
 				if (items[i] === startVersion + '.js') {
 					log.info(logPrefix + 'Found js migration script #' + startVersion + ' for table ' + tableName + ', running it now.');
-					require(migrationScriptsPath + '/' + startVersion + '.js')(function (err) {
+					require(migrationScriptsPath + '/' + startVersion + '.js').apply(that, [function (err) {
 						if (err) {
 							log.error(logPrefix + 'Got error running migration script ' + migrationScriptsPath + '/' + startVersion + '.js' + ': ' + err.message);
 							return cb(err);
@@ -195,7 +195,7 @@ function runScripts(startVersion, cb) {
 
 							that.runScripts(parseInt(startVersion) + 1, cb);
 						});
-					});
+					}]);
 
 					return;
 				} else if (items[i] === startVersion + '.sql') {

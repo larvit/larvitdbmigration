@@ -41,6 +41,7 @@ function DbMigration(options) {
 
 	// Set functions from dbDriver
 	that.getLock	= require(that.dbTypeFile).getLock;
+	that.rmLock	= require(that.dbTypeFile).rmLock;
 	that.run	= require(that.dbTypeFile).run;
 	that.runScripts	= require(that.dbTypeFile).runScripts;
 }

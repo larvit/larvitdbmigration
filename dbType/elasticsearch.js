@@ -1,159 +1,187 @@
 'use strict';
 
 const	topLogPrefix	= 'larvitdbmigration: dbType/elasticsearch.js - ',
+	request	= require('request'),
 	async	= require('async'),
 	log	= require('winston'),
-	fs	= require('fs'),
-	_	= require('lodash');
+	fs	= require('fs');
 
-function getLock(cb) {
-	const	logPrefix	= topLogPrefix + 'getLock() - ',
-		tableName	= this.options.tableName,
+function getLock(retries, cb) {
+	const	logPrefix	= topLogPrefix + 'getLock() - indexName: ' + this.options.tableName + ' - ',
 		that	= this,
-		es	= that.options.dbDriver;
+		es	= that.options.dbDriver,
+		esUri	= 'http://' + es.transport._config.host;
 
-	try {
-		const	tasks	= [];
-
-		let	dbCon;
-
-		tasks.push(function (cb) {
-			db.pool.getConnection(function (err, res) {
-				if (err) {
-					log.error(logPrefix + 'getConnection() err: ' + err.message);
-				}
-
-				dbCon	= res;
-				cb(err);
-			});
-		});
-
-		tasks.push(function (cb) {
-			dbCon.query('LOCK TABLES `' + tableName + '` WRITE;', cb);
-		});
-
-		tasks.push(function (cb) {
-			dbCon.query('SELECT running FROM `' + tableName + '`', function (err, rows) {
-				if (err) {
-					log.error(logPrefix + 'SQL err: ' + err.message);
-					return cb(err);
-				}
-
-				if (rows.length === 0) {
-					const err = 'No database records in ' + tableName;
-
-					log.error(logPrefix + err.message);
-					return cb(err);
-				}
-
-				if (rows[0].running === 0) {
-					cb();
-				} else {
-					dbCon.query('UNLOCK TABLES;', function (err) {
-						if (err) {
-							log.error(logPrefix + 'SQL err: ' + err.message);
-							return cb(err);
-						}
-
-						log.info(logPrefix + 'Another process is running the migrations for table ' + tableName + ', wait and try again soon.');
-						setTimeout(function () {
-							getLock(cb);
-						}, 500);
-					});
-				}
-			});
-		});
-
-		tasks.push(function (cb) {
-			dbCon.query('UPDATE `' + tableName + '` SET running = 1', cb);
-		});
-
-		tasks.push(function (cb) {
-			dbCon.query('UNLOCK TABLES;', cb);
-		});
-
-		tasks.push(function (cb) {
-			dbCon.release();
-			cb();
-		});
-
-		async.series(tasks, cb);
-	} catch (err) {
-		log.error(logPrefix + 'Error from driver: ' + err.message);
-		cb(err);
+	if (typeof retries === 'function') {
+		cb	= retries;
+		retries	= 0;
 	}
+
+	// Source: https://www.elastic.co/guide/en/elasticsearch/guide/current/concurrency-solutions.html
+	request({
+		'method':	'PUT',
+		'uri':	esUri + '/fs/lock/global/_create',
+		'body':	'{}'
+	}, function (err, response) {
+		if (err) {
+			log.error(logPrefix + 'Can not get lock on ' + esUri + '/fs/lock/global/_create');
+			return cb(err);
+		}
+
+		if (response.statusCode !== 201) {
+			if (retries < 100) {
+				log.info(logPrefix + 'Another process is running the migrations, retry nr: ' + retries + ', wait and try again soon. StatusCode: ' + response.statusCode);
+			} else {
+				log.warn(logPrefix + 'Another process is running the migrations, retry nr: ' + retries + ', wait and try again soon. StatusCode: ' + response.statusCode);
+			}
+
+			setTimeout(function () {
+				getLock(retries + 1, cb);
+			}, 500);
+			return;
+		}
+
+		log.verbose(logPrefix + 'Locked!');
+
+		cb();
+	});
+}
+
+function rmLock(cb) {
+	const	logPrefix	= topLogPrefix + 'rmLock() - indexName: ' + this.options.tableName + ' - ',
+		that	= this,
+		es	= that.options.dbDriver,
+		esUri	= 'http://' + es.transport._config.host;
+
+	request.delete(esUri + '/fs/lock/global', function (err, response) {
+		if (err) {
+			log.error(logPrefix + 'Can not clear lock on ' + esUri + '/fs/lock/global');
+			return cb(err);
+		}
+
+		if (response.statusCode !== 200) {
+			const	err	= new Error('Lock could not be removed. StatusCode: ' + response.statusCode);
+			log.warn(logPrefix + err.message);
+			return cb(err);
+		}
+
+		cb();
+	});
 }
 
 function run(cb) {
 	const	logPrefix	= topLogPrefix + 'run() - ',
-		tableName	= this.options.tableName,
+		indexName	= this.options.tableName,
 		tasks	= [],
 		that	= this,
-		db	= this.options.dbDriver;
+		es	= that.options.dbDriver,
+		esUri	= 'http://' + es.transport._config.host;
 
-	let	curVer;
+	let	curDoc;
 
-	// Create table if it does not exist
-	tasks.push(function (cb) {
-		const sql = 'CREATE TABLE IF NOT EXISTS `' + tableName + '` (`id` tinyint(1) unsigned NOT NULL DEFAULT \'1\', `version` int(10) unsigned NOT NULL DEFAULT \'0\', `running` tinyint(3) unsigned NOT NULL DEFAULT \'0\', PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=ascii COLLATE=ascii_bin COMMENT=\'Used for automatic database versioning. Do not modify!\';';
-		db.query(sql, cb);
-	});
+	function getDoc(cb) {
+		const	uri	= esUri + '/' + indexName + '/' + indexName + '/1';
 
-	// Update old version of table (for seamless updating of old versions of this module)
-	tasks.push(function (cb) {
-		db.query('DESCRIBE `' + tableName + '`', function (err, rows) {
-			if (err) return cb(err);
-
-			if (rows.length === 2 && rows[0].Field === 'version' && rows[1].Field === 'running') {
-				// Old version detected! Update!
-				db.query('ALTER TABLE `' + tableName + '` ADD `id` tinyint(1) unsigned NOT NULL DEFAULT \'1\' FIRST;', function (err) {
-					if (err) return cb(err);
-
-					db.query('ALTER TABLE `' + tableName + '` ADD PRIMARY KEY `id` (`id`);', cb);
-				});
-			} else {
-				// Nothing to do, continue
-				cb();
+		request(uri, function (err, response, body) {
+			if (err) {
+				log.error(logPrefix + 'getDoc() - GET ' + uri + ' failed, err: ' + err.message);
+				return cb(err);
 			}
+
+			if (response.statusCode === 200) {
+				try {
+					curDoc	= JSON.parse(body);
+				} catch (err) {
+					log.error(logPrefix + 'getDoc() - GET ' + uri + ' invalid JSON in body, err: ' + err.message + ' string: "' + body + '"');
+					cb(err);
+				}
+				return cb(err, response, body);
+			}
+
+			cb(err, response, body);
 		});
-	});
+	}
 
-	// Insert first record if it does not exist
-	tasks.push(function (cb) {
-		db.query('INSERT IGNORE INTO `' + tableName + '` VALUES(1, 0, 0);', cb);
-	});
-
-	// Lock table by setting the running column to 1
+	// Get lock
 	tasks.push(function (cb) {
 		that.getLock(cb);
 	});
 
-	// Get current version
+	// Create index if it does not exist
 	tasks.push(function (cb) {
-		db.query('SELECT version FROM `' + tableName + '`;', function (err, rows) {
+		const	uri	= esUri + '/' + indexName;
+
+		request.head(uri, function (err, response) {
+			if (err) {
+				log.error(logPrefix + 'HEAD ' + uri + ' failed, err: ' + err.message);
+				return cb(err);
+			}
+
+			if (response.statusCode === 200) {
+				return cb();
+			} else if (response.statusCode !== 404) {
+				const	err	= new Error('HEAD ' + uri + ' unexpected statusCode: ' + response.statusCode);
+				log.error(logPrefix + err.message);
+				return cb(err);
+			}
+
+			// If we arrive here its a 404 - create it!
+			request.put(uri, function (err, response) {
+				if (err) {
+					log.error(logPrefix + 'PUT ' + uri + ' failed, err: ' + err.message);
+					return cb(err);
+				}
+
+				if (response.statusCode !== 200) {
+					const	err	= new Error('PUT ' + uri + ', Unexpected statusCode: ' + response.statusCode);
+					log.error(logPrefix + err.message);
+					return cb(err);
+				}
+
+				cb();
+			});
+		});
+	});
+
+	// Create document if it does not exist and get current document
+	tasks.push(function (cb) {
+		const	uri	= esUri + '/' + indexName + '/' + indexName + '/1';
+
+		getDoc(function (err, response) {
 			if (err) return cb(err);
 
-			curVer = parseInt(rows[0].version);
+			if (response.statusCode === 404) {
+				request.put({'url': uri, 'json': {'version': 0, 'status': 'finnished'}}, function (err, response) {
+					if (err) {
+						log.error(logPrefix + 'PUT ' + uri + ' failed, err: ' + err.message);
+						return cb(err);
+					}
 
-			log.info(logPrefix + 'Current database version for table ' + tableName + ' is ' + curVer);
+					if (response.statusCode !== 201) {
+						const	err	= new Error('Failed to create document, statusCode: ' + response.statusCode);
+						log.error(logPrefix + err.message);
+						return cb(err);
+					}
 
-			cb();
+					getDoc(cb);
+				});
+			}
 		});
 	});
 
 	// Run scripts
 	tasks.push(function (cb) {
 		try {
-			that.runScripts(curVer + 1, cb);
+			that.runScripts(curDoc._source.version + 1, cb);
 		} catch (err) {
 			log.error(logPrefix + 'Error from driver: ' + err.message);
 			cb(err);
 		}
 	});
 
-	// Unlock table
+	// Remove lock
 	tasks.push(function (cb) {
-		db.query('UPDATE `' + tableName + '` SET running = 0;', cb);
+		that.rmLock(cb);
 	});
 
 	async.series(tasks, cb);
@@ -161,82 +189,101 @@ function run(cb) {
 
 function runScripts(startVersion, cb) {
 	const	migrationScriptsPath	= this.options.migrationScriptsPath,
-		tableName	= this.options.tableName,
+		indexName	= this.options.tableName,
 		logPrefix	= topLogPrefix + 'runScripts() - ',
+		tasks	= [],
 		that	= this,
-		db	= this.options.dbDriver;
+		es	= this.options.dbDriver,
+		esUri	= 'http://' + es.transport._config.host,
+		uri	= esUri + '/' + indexName + '/' + indexName + '/1';
 
-	log.verbose(logPrefix + 'Started with startVersion: "' + startVersion + '" in path: "' + migrationScriptsPath + '" for table ' + tableName);
+	log.verbose(logPrefix + 'Started with startVersion: "' + startVersion + '" in path: "' + migrationScriptsPath + '" for indexName ' + indexName + ' on esUri: ' + esUri);
 
-	try {
-		fs.readdir(migrationScriptsPath, function (err, items) {
-			const sql = 'UPDATE `' + tableName + '` SET version = ' + parseInt(startVersion) + ';';
-
-			let	localDbConf;
-
+	// Update db_version status
+	tasks.push(function (cb) {
+		request.put({'url': uri, 'json': {'version': startVersion, 'status': 'started'}}, function (err, response) {
 			if (err) {
-				log.info(logPrefix + 'Could not read migration script path "' + migrationScriptsPath + '"');
-				return cb();
+				log.error(logPrefix + 'PUT ' + uri + ' failed, err: ' + err.message);
+				return cb(err);
 			}
 
-			for (let i = 0; items[i] !== undefined; i ++) {
-				if (items[i] === startVersion + '.js') {
-					log.info(logPrefix + 'Found js migration script #' + startVersion + ' for table ' + tableName + ', running it now.');
-					require(migrationScriptsPath + '/' + startVersion + '.js')(function (err) {
-						if (err) {
-							log.error(logPrefix + 'Got error running migration script ' + migrationScriptsPath + '/' + startVersion + '.js' + ': ' + err.message);
-							return cb(err);
-						}
-
-						log.debug(logPrefix + 'Js migration script #' + startVersion + ' for table ' + tableName + ' ran. Updating database version and moving on.');
-						db.query(sql, function (err) {
-							if (err) return cb(err);
-
-							that.runScripts(parseInt(startVersion) + 1, cb);
-						});
-					});
-
-					return;
-				} else if (items[i] === startVersion + '.sql') {
-					let	dbCon;
-
-					log.info(logPrefix + 'Found sql migration script #' + startVersion + ' for table ' + tableName + ', running it now.');
-
-					localDbConf	= _.cloneDeep(db.conf);
-					localDbConf.multipleStatements	= true;
-					dbCon	= mysql.createConnection(localDbConf);
-
-					dbCon.query(fs.readFileSync(migrationScriptsPath + '/' + items[i]).toString(), function (err) {
-						if (err) {
-							log.error(logPrefix + 'Migration file: ' + items[i] + ' SQL error: ' + err.message);
-							return cb(err);
-						}
-
-						log.info(logPrefix + 'Sql migration script #' + startVersion + ' for table ' + tableName + ' ran. Updating database version and moving on.');
-						db.query(sql, function (err) {
-							if (err) return cb(err);
-
-							dbCon.end();
-
-							that.runScripts(parseInt(startVersion) + 1, cb);
-						});
-					});
-
-					return;
-				}
+			if (response.statusCode !== 200) {
+				const	err	= new Error('PUT ' + uri + ' statusCode: ' + response.statusCode);
+				log.error(logPrefix + err.message);
+				return cb(err);
 			}
 
-			log.info(logPrefix + 'Database migrated and done. Final version is ' + (startVersion - 1) + ' in table ' + tableName);
-
-			// If we end up here, it means there are no more migration scripts to run
 			cb();
 		});
-	} catch (err) {
-		log.error(logPrefix + 'Uncaught error: ' + err.message);
-		cb(err);
-	}
+	});
+
+	// Run the script
+	tasks.push(function (cb) {
+		if (fs.existsSync(migrationScriptsPath + '/' + startVersion + '.js')) {
+			log.info(logPrefix + 'Found js migration script #' + startVersion + ' for indexName ' + indexName + ', running it now.');
+
+			try {
+				require(migrationScriptsPath + '/' + startVersion + '.js').apply(that, [function (err) {
+					if (err) {
+						const	scriptErr	= err;
+
+						log.error(logPrefix + 'Got error running migration script ' + migrationScriptsPath + '/' + startVersion + '.js' + ': ' + err.message);
+
+						request.put({'url': uri, 'json': {'version': startVersion, 'status': 'failed'}}, function (err, response) {
+							if (err) {
+								log.error(logPrefix + 'PUT ' + uri + ' failed, err: ' + err.message);
+								return cb(err);
+							}
+
+							if (response.statusCode !== 200) {
+								const	err	= new Error('PUT ' + uri + ' statusCode: ' + response.statusCode);
+								log.error(logPrefix + err.message);
+								return cb(err);
+							}
+
+							cb(scriptErr);
+						});
+					}
+
+					log.debug(logPrefix + 'Js migration script #' + startVersion + ' for indexName ' + indexName + ' ran. Updating database version and moving on.');
+
+					request.put({'url': uri, 'json': {'version': startVersion, 'status': 'finnished'}}, function (err, response) {
+						if (err) {
+							log.error(logPrefix + 'PUT ' + uri + ' failed, err: ' + err.message);
+							return cb(err);
+						}
+
+						if (response.statusCode !== 200) {
+							const	err	= new Error('PUT ' + uri + ' statusCode: ' + response.statusCode);
+							log.error(logPrefix + err.message);
+							return cb(err);
+						}
+
+						if (fs.existsSync(migrationScriptsPath + '/' + (startVersion + 1) + '.js')) {
+							that.runScripts(parseInt(startVersion) + 1, cb);
+						} else {
+							cb();
+						}
+					});
+				}]);
+			} catch (err) {
+				log.error(logPrefix + 'Uncaught error: ' + err.message);
+				cb(err);
+			}
+		}
+	});
+
+	async.series(tasks, function (err) {
+		if (err) return cb(err);
+
+		log.info(logPrefix + 'Database migrated and done. Final version is ' + (startVersion - 1) + ' in table ' + indexName);
+
+		// If we end up here, it means there are no more migration scripts to run
+		cb();
+	});
 }
 
 exports.getLock	= getLock;
+exports.rmLock	= rmLock;
 exports.run	= run;
 exports.runScripts	= runScripts;

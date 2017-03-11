@@ -1,10 +1,10 @@
 'use strict';
 
-const	async	= require('async'),
-	db	= require('larvitdb');
+const	async	= require('async');
 
 exports = module.exports = function (cb) {
-	const tasks = [];
+	const	tasks	= [],
+		db	= this.options.dbDriver;
 
 	tasks.push(function (cb) {
 		db.query('ALTER TABLE bloj CHANGE nisse hasse int(11);', cb);

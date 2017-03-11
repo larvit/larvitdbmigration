@@ -2,6 +2,7 @@
 
 const	elasticsearch	= require('elasticsearch'),
 	DbMigration	= require(__dirname + '/../index.js'),
+	request	= require('request'),
 	assert	= require('assert'),
 	lUtils	= require('larvitutils'),
 	async	= require('async'),
@@ -225,17 +226,19 @@ describe('MariaDB migrations', function () {
 });
 
 describe('Elasticsearch migrations', function () {
+	let	esUri;
+
 	this.timeout(10000);
 	this.slow(300);
 
 	it('Run them', function (done) {
 		let	dbMigrations;
 
+		esUri	= 'http://' + es.transport._config.host;
+
 		esConf.migrationScriptsPath	= path.join(__dirname, '../testmigrations_elasticsearch');
 		esConf.dbType	= 'elasticsearch';
 		esConf.dbDriver	= es;
-
-console.log(es);
 
 		dbMigrations = new DbMigration(esConf);
 
@@ -246,30 +249,27 @@ console.log(es);
 		});
 	});
 
-	it('Should fetch some data form a migrated table', function (done) {
-		db.query('SELECT * FROM bloj', function (err, rows) {
+	it('should check the db_versions index', function (done) {
+		request(esUri + '/db_version/db_version/1', function (err, response, body) {
+			const	jsonBody	= JSON.parse(body);
+
 			if (err) throw err;
 
-			assert.deepStrictEqual(rows.length,	1);
-			assert.deepStrictEqual(rows[0].hasse,	42);
+			assert.strictEqual(jsonBody._source.version,	2);
+			assert.strictEqual(jsonBody._source.status,	'finnished');
+
 			done();
 		});
 	});
 
-	it('Make sure function works', function (done) {
-		db.query('SELECT multi_two(4) AS foo', function (err, rows) {
+	it('should check the foo index', function (done) {
+		request(esUri + '/foo/bar/666', function (err, response, body) {
+			const	jsonBody	= JSON.parse(body);
+
 			if (err) throw err;
 
-			assert.deepStrictEqual(rows[0].foo,	8);
-			done();
-		});
-	});
+			assert.strictEqual(jsonBody._source.blubb,	7);
 
-	it('Make sure function nr 2 works', function (done) {
-		db.query('SELECT multi_three(4) AS foo', function (err, rows) {
-			if (err) throw err;
-
-			assert.deepStrictEqual(rows[0].foo,	12);
 			done();
 		});
 	});

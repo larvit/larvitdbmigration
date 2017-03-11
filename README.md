@@ -32,9 +32,11 @@ In your application startup script, do something like this:
 ```javascript
 'use strict';
 
-const	dbMigration	= require('larvitdbmigration'),
+const	DbMigration	= require('larvitdbmigration'),
 	options	= {},
 	db	= require('larvitdb');
+
+let	dbMigration;
 
 db.setup({
 	'host':	'127.0.0.1',
@@ -45,13 +47,13 @@ db.setup({
 
 options.dbType	= 'larvitdb';
 options.dbDriver	= db;
-options.tableName	= 'db_version';	// Optional - used as index for elasticsearch
+options.tableName	= 'db_version';	// Optional - used as index name for elasticsearch
 options.migrationScriptsPath	= './dbmigration';	// Optional
 
-dbMigration(options)(function (err) {
-	if (err) {
-		throw err;
-	}
+dbMigration = new DbMigration(options);
+
+dbMigration.run(function (err) {
+	if (err) throw err;
 
 	// Now database is migrated and ready for use!
 });
@@ -71,15 +73,13 @@ let	dbMigration;
 
 options.dbType	= 'elasticsearch';
 options.dbDriver	= es;
-options.indexName	= 'db_version';	// Optional - alias for tableName
+options.tableName	= 'db_version';	// Optional - used as index name
 options.migrationScriptsPath	= './dbmigration';	// Optional
 
 dbMigration	= new DbMigration(options);
 
 dbMigration.run(function (err) {
-	if (err) {
-		throw err;
-	}
+	if (err) throw err;
 
 	// Now database is migrated and ready for use!
 });
@@ -103,7 +103,7 @@ Create the file process.cwd()/migrationScriptsPath/1.js with this content:
 'use strict';
 
 exports = module.exports = function (cb) {
-	const	db	= this.dbDriver;
+	const	db	= this.options.dbDriver;
 
 	db.query('ALTER TABLE bloj CHANGE nisse hasse int(11);', cb);
 };
@@ -117,7 +117,7 @@ Create the file process.cwd()/migrationScriptsPath/1.js with this content:
 'use strict';
 
 exports = module.exports = function (cb) {
-	const	es	= this.dbDriver;
+	const	es	= this.options.dbDriver;
 
 	es.indices.putMapping({
 		'index':	'foo',
