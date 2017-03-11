@@ -30,22 +30,16 @@ before(function (done) {
 	let	mariaDbConfFile,
 		esConfFile;
 
-	for (let i = 0; process.argv[i] !== undefined; i ++) {
-		if (process.argv[i].split('=').length === 2) {
-			if (process.argv[i].split('=')[0] === '--dbConfFile') {
-				mariaDbConfFile	= process.argv[i].split('=')[1];
-			} else if (process.argv[i].split('=')[0] === '--esConfFile') {
-				esConfFile	= process.argv[i].split('=')[1];
-			}
-		}
+	if (process.env.ESCONFFILE === undefined) {
+		esConfFile = __dirname + '/../config/es_test.json';
+	} else {
+		esConfFile = process.env.ESCONFFILE;
 	}
 
-	if (mariaDbConfFile === undefined) {
-		mariaDbConfFile	= __dirname + '/../config/db_test.json';
-	}
-
-	if (esConfFile === undefined) {
-		esConfFile	= __dirname + '/../config/es_test.json';
+	if (process.env.DBCONFFILE === undefined) {
+		mariaDbConfFile = __dirname + '/../config/db_test.json';
+	} else {
+		mariaDbConfFile = process.env.DBCONFFILE;
 	}
 
 	log.verbose('MariaDB config file: "' + mariaDbConfFile + '"');

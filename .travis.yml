@@ -24,7 +24,7 @@ install:
   - if [[ $TRAVIS_OS_NAME == "linux" ]]; then export CXX=g++-4.8; fi
   - npm i
 
-script: mocha test/test.js --dbConfFile=db_travis.json --esConfFile=es_travis.json
+script: ESCONFFILE=es_travis.json DBCONFFILE=db_travis.json npm test
 
 services:
   - mysql
