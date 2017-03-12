@@ -7,7 +7,7 @@ const	topLogPrefix	= 'larvitdbmigration: dbType/elasticsearch.js - ',
 	fs	= require('fs');
 
 function getLock(retries, cb) {
-	const	logPrefix	= topLogPrefix + 'getLock() - indexName: ' + this.options.tableName + ' - ',
+	const	logPrefix	= topLogPrefix + 'getLock() - indexName: "' + this.options.tableName + '" - ',
 		that	= this,
 		es	= that.options.dbDriver,
 		esUri	= 'http://' + es.transport._config.host;
@@ -36,7 +36,7 @@ function getLock(retries, cb) {
 			}
 
 			setTimeout(function () {
-				getLock(retries + 1, cb);
+				that.getLock(retries + 1, cb);
 			}, 500);
 			return;
 		}
@@ -48,7 +48,7 @@ function getLock(retries, cb) {
 }
 
 function rmLock(cb) {
-	const	logPrefix	= topLogPrefix + 'rmLock() - indexName: ' + this.options.tableName + ' - ',
+	const	logPrefix	= topLogPrefix + 'rmLock() - indexName: "' + this.options.tableName + '" - ',
 		that	= this,
 		es	= that.options.dbDriver,
 		esUri	= 'http://' + es.transport._config.host;
@@ -70,7 +70,7 @@ function rmLock(cb) {
 }
 
 function run(cb) {
-	const	logPrefix	= topLogPrefix + 'run() - ',
+	const	logPrefix	= topLogPrefix + 'run() - indexName: "' + this.options.tableName + '" - ',
 		indexName	= this.options.tableName,
 		tasks	= [],
 		that	= this,
@@ -190,14 +190,14 @@ function run(cb) {
 function runScripts(startVersion, cb) {
 	const	migrationScriptsPath	= this.options.migrationScriptsPath,
 		indexName	= this.options.tableName,
-		logPrefix	= topLogPrefix + 'runScripts() - ',
+		logPrefix	= topLogPrefix + 'runScripts() - indexName: "' + this.options.tableName + '" - ',
 		tasks	= [],
 		that	= this,
 		es	= this.options.dbDriver,
 		esUri	= 'http://' + es.transport._config.host,
 		uri	= esUri + '/' + indexName + '/' + indexName + '/1';
 
-	log.verbose(logPrefix + 'Started with startVersion: "' + startVersion + '" in path: "' + migrationScriptsPath + '" for indexName ' + indexName + ' on esUri: ' + esUri);
+	log.verbose(logPrefix + 'Started with startVersion: "' + startVersion + '" in path: "' + migrationScriptsPath + '" on esUri: ' + esUri);
 
 	// Update db_version status
 	tasks.push(function (cb) {
@@ -220,7 +220,7 @@ function runScripts(startVersion, cb) {
 	// Run the script
 	tasks.push(function (cb) {
 		if (fs.existsSync(migrationScriptsPath + '/' + startVersion + '.js')) {
-			log.info(logPrefix + 'Found js migration script #' + startVersion + ' for indexName ' + indexName + ', running it now.');
+			log.info(logPrefix + 'Found js migration script #' + startVersion + ', running it now.');
 
 			try {
 				require(migrationScriptsPath + '/' + startVersion + '.js').apply(that, [function (err) {
@@ -245,7 +245,7 @@ function runScripts(startVersion, cb) {
 						});
 					}
 
-					log.debug(logPrefix + 'Js migration script #' + startVersion + ' for indexName ' + indexName + ' ran. Updating database version and moving on.');
+					log.debug(logPrefix + 'Js migration script #' + startVersion + ' ran. Updating database version and moving on.');
 
 					request.put({'url': uri, 'json': {'version': startVersion, 'status': 'finnished'}}, function (err, response) {
 						if (err) {
@@ -276,7 +276,7 @@ function runScripts(startVersion, cb) {
 	async.series(tasks, function (err) {
 		if (err) return cb(err);
 
-		log.info(logPrefix + 'Database migrated and done. Final version is ' + (startVersion - 1) + ' in table ' + indexName);
+		log.info(logPrefix + 'Database migrated and done. Final version is ' + (startVersion - 1));
 
 		// If we end up here, it means there are no more migration scripts to run
 		cb();

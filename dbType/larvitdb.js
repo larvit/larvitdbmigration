@@ -8,7 +8,7 @@ const	topLogPrefix	= 'larvitdbmigration: dbType/larvitdb.js - ',
 	_	= require('lodash');
 
 function getLock(cb) {
-	const	logPrefix	= topLogPrefix + 'getLock() - ',
+	const	logPrefix	= topLogPrefix + 'getLock() - tableName: "' + this.options.tableName + '" - ',
 		tableName	= this.options.tableName,
 		that	= this,
 		db	= that.options.dbDriver;
@@ -41,7 +41,7 @@ function getLock(cb) {
 				}
 
 				if (rows.length === 0) {
-					const err = 'No database records in ' + tableName;
+					const err = 'No database records';
 
 					log.error(logPrefix + err.message);
 					return cb(err);
@@ -56,7 +56,7 @@ function getLock(cb) {
 							return cb(err);
 						}
 
-						log.info(logPrefix + 'Another process is running the migrations for table ' + tableName + ', wait and try again soon.');
+						log.info(logPrefix + 'Another process is running the migrations, wait and try again soon.');
 						setTimeout(function () {
 							getLock(cb);
 						}, 500);
@@ -86,7 +86,7 @@ function getLock(cb) {
 }
 
 function run(cb) {
-	const	logPrefix	= topLogPrefix + 'run() - ',
+	const	logPrefix	= topLogPrefix + 'run() - tableName: "' + this.options.tableName + '" - ',
 		tableName	= this.options.tableName,
 		tasks	= [],
 		that	= this,
@@ -136,7 +136,7 @@ function run(cb) {
 
 			curVer = parseInt(rows[0].version);
 
-			log.info(logPrefix + 'Current database version for table ' + tableName + ' is ' + curVer);
+			log.info(logPrefix + 'Current database version is ' + curVer);
 
 			cb();
 		});
@@ -163,11 +163,11 @@ function run(cb) {
 function runScripts(startVersion, cb) {
 	const	migrationScriptsPath	= this.options.migrationScriptsPath,
 		tableName	= this.options.tableName,
-		logPrefix	= topLogPrefix + 'runScripts() - ',
+		logPrefix	= topLogPrefix + 'runScripts() - tableName: "' + this.options.tableName + '" - ',
 		that	= this,
 		db	= this.options.dbDriver;
 
-	log.verbose(logPrefix + 'Started with startVersion: "' + startVersion + '" in path: "' + migrationScriptsPath + '" for table ' + tableName);
+	log.verbose(logPrefix + 'Started with startVersion: "' + startVersion + '" in path: "' + migrationScriptsPath + '"');
 
 	try {
 		fs.readdir(migrationScriptsPath, function (err, items) {
@@ -182,14 +182,14 @@ function runScripts(startVersion, cb) {
 
 			for (let i = 0; items[i] !== undefined; i ++) {
 				if (items[i] === startVersion + '.js') {
-					log.info(logPrefix + 'Found js migration script #' + startVersion + ' for table ' + tableName + ', running it now.');
+					log.info(logPrefix + 'Found js migration script #' + startVersion + ', running it now.');
 					require(migrationScriptsPath + '/' + startVersion + '.js').apply(that, [function (err) {
 						if (err) {
 							log.error(logPrefix + 'Got error running migration script ' + migrationScriptsPath + '/' + startVersion + '.js' + ': ' + err.message);
 							return cb(err);
 						}
 
-						log.debug(logPrefix + 'Js migration script #' + startVersion + ' for table ' + tableName + ' ran. Updating database version and moving on.');
+						log.debug(logPrefix + 'Js migration script #' + startVersion + ' ran. Updating database version and moving on.');
 						db.query(sql, function (err) {
 							if (err) return cb(err);
 
@@ -201,7 +201,7 @@ function runScripts(startVersion, cb) {
 				} else if (items[i] === startVersion + '.sql') {
 					let	dbCon;
 
-					log.info(logPrefix + 'Found sql migration script #' + startVersion + ' for table ' + tableName + ', running it now.');
+					log.info(logPrefix + 'Found sql migration script #' + startVersion + ', running it now.');
 
 					localDbConf	= _.cloneDeep(db.conf);
 					localDbConf.multipleStatements	= true;
@@ -213,7 +213,7 @@ function runScripts(startVersion, cb) {
 							return cb(err);
 						}
 
-						log.info(logPrefix + 'Sql migration script #' + startVersion + ' for table ' + tableName + ' ran. Updating database version and moving on.');
+						log.info(logPrefix + 'Sql migration script #' + startVersion + ' ran. Updating database version and moving on.');
 						db.query(sql, function (err) {
 							if (err) return cb(err);
 
@@ -227,7 +227,7 @@ function runScripts(startVersion, cb) {
 				}
 			}
 
-			log.info(logPrefix + 'Database migrated and done. Final version is ' + (startVersion - 1) + ' in table ' + tableName);
+			log.info(logPrefix + 'Database migrated and done. Final version is ' + (startVersion - 1));
 
 			// If we end up here, it means there are no more migration scripts to run
 			cb();
