@@ -222,7 +222,6 @@ describe('MariaDB migrations', function () {
 describe('Elasticsearch migrations', function () {
 	let	esUri;
 
-	this.timeout(10000);
 	this.slow(300);
 
 	it('Run them', function (done) {
@@ -263,6 +262,24 @@ describe('Elasticsearch migrations', function () {
 			if (err) throw err;
 
 			assert.strictEqual(jsonBody._source.blubb,	7);
+
+			done();
+		});
+	});
+
+	it('run them again', function (done) {
+		let	dbMigrations;
+
+		esUri	= 'http://' + es.transport._config.host;
+
+		esConf.migrationScriptsPath	= path.join(__dirname, '../testmigrations_elasticsearch');
+		esConf.dbType	= 'elasticsearch';
+		esConf.dbDriver	= es;
+
+		dbMigrations = new DbMigration(esConf);
+
+		dbMigrations.run(function (err) {
+			if (err) throw err;
 
 			done();
 		});

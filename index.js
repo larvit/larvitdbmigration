@@ -1,7 +1,6 @@
 'use strict';
 
-const	jsonStringify	= require('json-stringify-safe'),
-	topLogPrefix	= 'larvitdbmigration: index.js - ',
+const	topLogPrefix	= 'larvitdbmigration: index.js - ',
 	log	= require('winston'),
 	fs	= require('fs');
 
@@ -32,7 +31,7 @@ function DbMigration(options) {
 		throw new Error('Missing options.dbDriver');
 	}
 
-	log.verbose(logPrefix + 'Started with options: ' + jsonStringify(options));
+	log.verbose(logPrefix + 'Started with dbType: "' + options.dbType + '", tableName: "' + options.tableName + '", migrationScriptsPath: "' + options.migrationScriptsPath + '"');
 
 	// Resolve ./ paths to be relative to application path
 	if (options.migrationScriptsPath.substring(0, 2) === './') {

@@ -17,6 +17,8 @@ function getLock(retries, cb) {
 		retries	= 0;
 	}
 
+	log.debug(logPrefix + 'Started');
+
 	// Source: https://www.elastic.co/guide/en/elasticsearch/guide/current/concurrency-solutions.html
 	request({
 		'method':	'PUT',
@@ -53,6 +55,8 @@ function rmLock(cb) {
 		es	= that.options.dbDriver,
 		esUri	= 'http://' + es.transport._config.host;
 
+	log.debug(logPrefix + 'Started');
+
 	request.delete(esUri + '/fs/lock/global', function (err, response) {
 		if (err) {
 			log.error(logPrefix + 'Can not clear lock on ' + esUri + '/fs/lock/global');
@@ -64,6 +68,8 @@ function rmLock(cb) {
 			log.warn(logPrefix + err.message);
 			return cb(err);
 		}
+
+		log.verbose(logPrefix + 'Unlocked!');
 
 		cb();
 	});
@@ -79,20 +85,27 @@ function run(cb) {
 
 	let	curDoc;
 
+	log.debug(logPrefix + 'Started');
+
 	function getDoc(cb) {
-		const	uri	= esUri + '/' + indexName + '/' + indexName + '/1';
+		const	subLogPrefix	= logPrefix + 'getDoc() - ',
+			uri	= esUri + '/' + indexName + '/' + indexName + '/1';
+
+		log.debug(subLogPrefix + 'Running for ' + uri);
 
 		request(uri, function (err, response, body) {
 			if (err) {
-				log.error(logPrefix + 'getDoc() - GET ' + uri + ' failed, err: ' + err.message);
+				log.error(subLogPrefix + 'GET ' + uri + ' failed, err: ' + err.message);
 				return cb(err);
 			}
+
+			log.debug(subLogPrefix + 'GET ' + uri + ' ' + response.statusCode + ' ' + response.statusMessage);
 
 			if (response.statusCode === 200) {
 				try {
 					curDoc	= JSON.parse(body);
 				} catch (err) {
-					log.error(logPrefix + 'getDoc() - GET ' + uri + ' invalid JSON in body, err: ' + err.message + ' string: "' + body + '"');
+					log.error(subLogPrefix + 'GET ' + uri + ' invalid JSON in body, err: ' + err.message + ' string: "' + body + '"');
 					cb(err);
 				}
 				return cb(err, response, body);
@@ -109,34 +122,42 @@ function run(cb) {
 
 	// Create index if it does not exist
 	tasks.push(function (cb) {
-		const	uri	= esUri + '/' + indexName;
+		const	subLogPrefix	= logPrefix + 'indexName: "' + indexName + '" - ',
+			uri	= esUri + '/' + indexName;
+
+		log.debug(subLogPrefix + 'Crating index if it did not exist');
 
 		request.head(uri, function (err, response) {
 			if (err) {
-				log.error(logPrefix + 'HEAD ' + uri + ' failed, err: ' + err.message);
+				log.error(subLogPrefix + 'HEAD ' + uri + ' failed, err: ' + err.message);
 				return cb(err);
 			}
 
 			if (response.statusCode === 200) {
+				log.debug(subLogPrefix + 'Index already exists');
 				return cb();
 			} else if (response.statusCode !== 404) {
 				const	err	= new Error('HEAD ' + uri + ' unexpected statusCode: ' + response.statusCode);
-				log.error(logPrefix + err.message);
+				log.error(subLogPrefix + err.message);
 				return cb(err);
 			}
+
+			log.debug(subLogPrefix + 'Index does not exist, create it');
 
 			// If we arrive here its a 404 - create it!
 			request.put(uri, function (err, response) {
 				if (err) {
-					log.error(logPrefix + 'PUT ' + uri + ' failed, err: ' + err.message);
+					log.error(subLogPrefix + 'PUT ' + uri + ' failed, err: ' + err.message);
 					return cb(err);
 				}
 
 				if (response.statusCode !== 200) {
 					const	err	= new Error('PUT ' + uri + ', Unexpected statusCode: ' + response.statusCode);
-					log.error(logPrefix + err.message);
+					log.error(subLogPrefix + err.message);
 					return cb(err);
 				}
+
+				log.debug(subLogPrefix + 'Created!');
 
 				cb();
 			});
@@ -151,6 +172,8 @@ function run(cb) {
 			if (err) return cb(err);
 
 			if (response.statusCode === 404) {
+				log.debug(logPrefix + 'Create database version document');
+
 				request.put({'url': uri, 'json': {'version': 0, 'status': 'finnished'}}, function (err, response) {
 					if (err) {
 						log.error(logPrefix + 'PUT ' + uri + ' failed, err: ' + err.message);
@@ -163,8 +186,17 @@ function run(cb) {
 						return cb(err);
 					}
 
+					log.verbose(logPrefix + 'Database version document created');
+
 					getDoc(cb);
 				});
+			} else if (response.statusCode === 200) {
+				log.debug(logPrefix + 'Database version document already exists');
+				cb();
+			} else {
+				const	err	= new Error('Unexpected statusCode when getting database version document: ' + response.statusCode);
+				log.error(logPrefix + err.message);
+				return cb(err);
 			}
 		});
 	});
@@ -197,31 +229,39 @@ function runScripts(startVersion, cb) {
 		esUri	= 'http://' + es.transport._config.host,
 		uri	= esUri + '/' + indexName + '/' + indexName + '/1';
 
+	let	scriptFound	= false;
+
 	log.verbose(logPrefix + 'Started with startVersion: "' + startVersion + '" in path: "' + migrationScriptsPath + '" on esUri: ' + esUri);
 
 	// Update db_version status
 	tasks.push(function (cb) {
-		request.put({'url': uri, 'json': {'version': startVersion, 'status': 'started'}}, function (err, response) {
-			if (err) {
-				log.error(logPrefix + 'PUT ' + uri + ' failed, err: ' + err.message);
-				return cb(err);
-			}
+		if (fs.existsSync(migrationScriptsPath + '/' + startVersion + '.js')) {
+			log.info(logPrefix + 'Found js migration script #' + startVersion + ', running it now.');
 
-			if (response.statusCode !== 200) {
-				const	err	= new Error('PUT ' + uri + ' statusCode: ' + response.statusCode);
-				log.error(logPrefix + err.message);
-				return cb(err);
-			}
+			scriptFound	= true;
 
+			request.put({'url': uri, 'json': {'version': startVersion, 'status': 'started'}}, function (err, response) {
+				if (err) {
+					log.error(logPrefix + 'PUT ' + uri + ' failed, err: ' + err.message);
+					return cb(err);
+				}
+
+				if (response.statusCode !== 200) {
+					const	err	= new Error('PUT ' + uri + ' statusCode: ' + response.statusCode);
+					log.error(logPrefix + err.message);
+					return cb(err);
+				}
+
+				cb();
+			});
+		} else {
 			cb();
-		});
+		}
 	});
 
 	// Run the script
 	tasks.push(function (cb) {
-		if (fs.existsSync(migrationScriptsPath + '/' + startVersion + '.js')) {
-			log.info(logPrefix + 'Found js migration script #' + startVersion + ', running it now.');
-
+		if (scriptFound === true) {
 			try {
 				require(migrationScriptsPath + '/' + startVersion + '.js').apply(that, [function (err) {
 					if (err) {
@@ -270,6 +310,8 @@ function runScripts(startVersion, cb) {
 				log.error(logPrefix + 'Uncaught error: ' + err.message);
 				cb(err);
 			}
+		} else {
+			cb();
 		}
 	});
 
