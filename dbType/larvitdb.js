@@ -58,7 +58,7 @@ function getLock(cb) {
 
 						log.info(logPrefix + 'Another process is running the migrations, wait and try again soon.');
 						setTimeout(function () {
-							getLock(cb);
+							that.getLock(cb);
 						}, 500);
 					});
 				}
