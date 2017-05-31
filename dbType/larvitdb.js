@@ -1,6 +1,6 @@
 'use strict';
 
-const	topLogPrefix	= 'larvitdbmigration: dbType/larvitdb.js - ',
+const	topLogPrefix	= 'larvitdbmigration: dbType/larvitdb.js: ',
 	async	= require('async'),
 	mysql	= require('mysql2'),
 	log	= require('winston'),

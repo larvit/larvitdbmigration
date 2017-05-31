@@ -8,7 +8,8 @@
   "contributors": [],
   "dependencies": {
     "async": "^2.0.1",
-    "elasticsearch": "^12.1.3",
+    "elasticsearch": "^13.0.0",
+    "json-stringify-safe": "^5.0.1",
     "larvitdb": "^1.2.2",
     "larvitutils": "^1.1.1",
     "lodash": "^4.7.0",
