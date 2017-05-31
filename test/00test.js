@@ -17,12 +17,6 @@ let	mariaDbConf,
 
 // Set up winston
 log.remove(log.transports.Console);
-log.add(log.transports.Console, {
-	'level':	'warn',
-	'colorize':	true,
-	'timestamp':	true,
-	'json':	false
-});
 
 before(function (done) {
 	const	tasks	= [];
@@ -216,6 +210,34 @@ describe('MariaDB migrations', function () {
 			assert.deepStrictEqual(rows[0].foo,	12);
 			done();
 		});
+	});
+
+	it('Should fail when migration returns error', function (done) {
+		const	tasks	= [];
+
+		// Clean out database
+		tasks.push(function (cb) {
+			db.removeAllTables(cb);
+		});
+
+		// Run failing migrations
+		tasks.push(function (cb) {
+			let	dbMigrations;
+
+			mariaDbConf.migrationScriptsPath	= path.join(__dirname, '../testmigrations_mariadb_failing');
+			mariaDbConf.dbType	= 'larvitdb';
+			mariaDbConf.dbDriver	= db;
+
+			dbMigrations = new DbMigration(mariaDbConf);
+
+			dbMigrations.run(function (err) {
+				assert(err instanceof Error, 'err should be an instance of Error');
+
+				cb();
+			});
+		});
+
+		async.series(tasks, done);
 	});
 });
 
