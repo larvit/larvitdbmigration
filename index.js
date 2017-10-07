@@ -8,6 +8,10 @@ function DbMigration(options) {
 	const	logPrefix	= topLogPrefix + 'DbMigration() - ',
 		that	= this;
 
+	if (that === undefined) {
+		throw new Error('DbMigration must be instantianted');
+	}
+
 	that.options = options = options || {};
 
 	if (options.tableName	=== undefined) options.tableName	= 'db_version';
