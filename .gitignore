@@ -1,3 +1,4 @@
 node_modules
 config/db_test.json
 config/es_test.json
+package-lock.json

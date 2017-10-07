@@ -1,6 +1,6 @@
 'use strict';
 
-const	topLogPrefix	= 'larvitdbmigration: dbType/elasticsearch.js - ',
+const	topLogPrefix	= 'larvitdbmigration: dbType/elasticsearch.js: ',
 	request	= require('request'),
 	async	= require('async'),
 	log	= require('winston'),
@@ -281,8 +281,9 @@ function runScripts(startVersion, cb) {
 								return cb(err);
 							}
 
-							cb(scriptErr);
+							return cb(scriptErr);
 						});
+						return;
 					}
 
 					log.debug(logPrefix + 'Js migration script #' + startVersion + ' ran. Updating database version and moving on.');
@@ -302,16 +303,16 @@ function runScripts(startVersion, cb) {
 						if (fs.existsSync(migrationScriptsPath + '/' + (startVersion + 1) + '.js')) {
 							that.runScripts(parseInt(startVersion) + 1, cb);
 						} else {
-							cb();
+							return cb();
 						}
 					});
 				}]);
 			} catch (err) {
 				log.error(logPrefix + 'Uncaught error: ' + err.message);
-				cb(err);
+				return cb(err);
 			}
 		} else {
-			cb();
+			return cb();
 		}
 	});
 
