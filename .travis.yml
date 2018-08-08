@@ -26,10 +26,8 @@ install:
 
 script: ESCONFFILE=es_travis.json DBCONFFILE=db_travis.json npm test
 
-services:
-  - mysql
-
 addons:
+  mariadb: '10.3'
   apt:
     sources:
     - ubuntu-toolchain-r-test
