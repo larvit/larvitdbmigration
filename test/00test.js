@@ -1,22 +1,18 @@
 'use strict';
 
-const	elasticsearch	= require('elasticsearch'),
-	DbMigration	= require(__dirname + '/../index.js'),
+const	DbMigration	= require(__dirname + '/../index.js'),
 	request	= require('request'),
 	assert	= require('assert'),
-	lUtils	= require('larvitutils'),
+	Lutils	= require('larvitutils'),
+	lutils	= new Lutils(),
 	async	= require('async'),
 	path	= require('path'),
-	log	= require('winston'),
+	log	= new lutils.Log('silence!!!'),
 	db	= require('larvitdb'),
 	fs	= require('fs');
 
 let	mariaDbConf,
-	esConf,
-	es;
-
-// Set up winston
-log.remove(log.transports.Console);
+	esConf;
 
 before(function (done) {
 	const	tasks	= [];
@@ -24,20 +20,25 @@ before(function (done) {
 	let	mariaDbConfFile,
 		esConfFile;
 
-	if (process.env.ESCONFFILE === undefined) {
-		esConfFile = __dirname + '/../config/es_test.json';
-	} else {
-		esConfFile = process.env.ESCONFFILE;
-	}
+	// Set conf file paths
+	tasks.push(function (cb) {
+		if (process.env.ESCONFFILE === undefined) {
+			esConfFile	= __dirname + '/../config/es_test.json';
+		} else {
+			esConfFile	= process.env.ESCONFFILE;
+		}
 
-	if (process.env.DBCONFFILE === undefined) {
-		mariaDbConfFile = __dirname + '/../config/db_test.json';
-	} else {
-		mariaDbConfFile = process.env.DBCONFFILE;
-	}
+		if (process.env.DBCONFFILE === undefined) {
+			mariaDbConfFile	= __dirname + '/../config/db_test.json';
+		} else {
+			mariaDbConfFile	= process.env.DBCONFFILE;
+		}
 
-	log.verbose('MariaDB config file: "' + mariaDbConfFile + '"');
-	log.verbose('Elasticsearch config file: "' + esConfFile + '"');
+		log.verbose('MariaDB config file: "' + mariaDbConfFile + '"');
+		log.verbose('Elasticsearch config file: "' + esConfFile + '"');
+
+		cb();
+	});
 
 	// MariaDb
 	tasks.push(function (cb) {
@@ -82,7 +83,7 @@ before(function (done) {
 						process.exit(1);
 					}
 
-					mariaDbConf = require(altMariaDbConfFile);
+					mariaDbConf	= require(altMariaDbConfFile);
 					runMariaDbSetup(altMariaDbConfFile);
 				});
 			} else {
@@ -95,30 +96,20 @@ before(function (done) {
 	// Elasticsearch
 	tasks.push(function (cb) {
 		function checkEmptyEs() {
-			es.cat.indices({'v': true}, function (err, result) {
+			const	reqOptions	= {};
+
+			reqOptions.url	= 'http://' + esConf.clientOptions.host + '/_cat/indices?format=json';
+			reqOptions.json	= true;
+
+			request(reqOptions, function (err, response, body) {
 				if (err) throw err;
 
-				// Source: https://www.elastic.co/guide/en/elasticsearch/reference/1.4/_list_all_indexes.html
-				if (result !== 'health status index uuid pri rep docs.count docs.deleted store.size pri.store.size\n') {
+				if ( ! Array.isArray(body) || body.length !== 0) {
 					throw new Error('Database is not empty. To make a test, you must supply an empty database!');
 					process.exit(1);
 				}
 
 				cb(err);
-			});
-		}
-
-		function runEsSetup(esConfFile) {
-			log.verbose('ES config: ' + JSON.stringify(require(esConfFile)));
-
-			es = lUtils.instances.elasticsearch = new elasticsearch.Client(require(esConfFile).clientOptions);
-			es.ping(function (err) {
-				if (err) {
-					log.error(err.message);
-					process.exit(1);
-				}
-
-				checkEmptyEs();
 			});
 		}
 
@@ -134,12 +125,12 @@ before(function (done) {
 						process.exit(1);
 					}
 
-					esConf = require(altEsConfFile);
-					runEsSetup(altEsConfFile);
+					esConf	= require(altEsConfFile);
+					checkEmptyEs(altEsConfFile);
 				});
 			} else {
-				esConf = require(esConfFile);
-				runEsSetup(esConfFile);
+				esConf	= require(esConfFile);
+				checkEmptyEs(esConfFile);
 			}
 		});
 	});
@@ -155,7 +146,13 @@ after(function (done) {
 	});
 
 	tasks.push(function (cb) {
-		es.indices.delete({'index': '*'}, cb);
+		const	reqOptions	= {};
+
+		reqOptions.url	= 'http://' + esConf.clientOptions.host + '/_all';
+		reqOptions.json	= true;
+		reqOptions.method	= 'DELETE';
+
+		request(reqOptions, cb);
 	});
 
 	async.parallel(tasks, function (err) {
@@ -172,14 +169,14 @@ describe('MariaDB migrations', function () {
 		let	dbMigrations;
 
 		mariaDbConf.migrationScriptsPath	= path.join(__dirname, '../testmigrations_mariadb');
-		mariaDbConf.dbType	= 'larvitdb';
+		mariaDbConf.dbType	= 'mariadb';
 		mariaDbConf.dbDriver	= db;
+		mariaDbConf.log	= log;
 
-		dbMigrations = new DbMigration(mariaDbConf);
+		dbMigrations	= new DbMigration(mariaDbConf);
 
 		dbMigrations.run(function (err) {
 			if (err) throw err;
-
 			done();
 		});
 	});
@@ -225,10 +222,11 @@ describe('MariaDB migrations', function () {
 			let	dbMigrations;
 
 			mariaDbConf.migrationScriptsPath	= path.join(__dirname, '../testmigrations_mariadb_failing');
-			mariaDbConf.dbType	= 'larvitdb';
+			mariaDbConf.dbType	= 'mariadb';
 			mariaDbConf.dbDriver	= db;
+			mariaDbConf.log	= log;
 
-			dbMigrations = new DbMigration(mariaDbConf);
+			dbMigrations	= new DbMigration(mariaDbConf);
 
 			dbMigrations.run(function (err) {
 				assert(err instanceof Error, 'err should be an instance of Error');
@@ -242,30 +240,26 @@ describe('MariaDB migrations', function () {
 });
 
 describe('Elasticsearch migrations', function () {
-	let	esUri;
-
 	this.slow(300);
 
 	it('Run them', function (done) {
 		let	dbMigrations;
 
-		esUri	= 'http://' + es.transport._config.host;
-
-		esConf.migrationScriptsPath	= path.join(__dirname, '../testmigrations_elasticsearch');
 		esConf.dbType	= 'elasticsearch';
-		esConf.dbDriver	= es;
+		esConf.url	= 'http://' + esConf.clientOptions.host;
+		esConf.migrationScriptsPath	= path.join(__dirname, '../testmigrations_elasticsearch');
+		esConf.log	= log;
 
-		dbMigrations = new DbMigration(esConf);
+		dbMigrations	= new DbMigration(esConf);
 
 		dbMigrations.run(function (err) {
 			if (err) throw err;
-
 			done();
 		});
 	});
 
 	it('should check the db_versions index', function (done) {
-		request(esUri + '/db_version/db_version/1', function (err, response, body) {
+		request('http://' + esConf.clientOptions.host + '/db_version/db_version/1', function (err, response, body) {
 			const	jsonBody	= JSON.parse(body);
 
 			if (err) throw err;
@@ -278,7 +272,7 @@ describe('Elasticsearch migrations', function () {
 	});
 
 	it('should check the foo index', function (done) {
-		request(esUri + '/foo/bar/666', function (err, response, body) {
+		request('http://' + esConf.clientOptions.host + '/foo/bar/666', function (err, response, body) {
 			const	jsonBody	= JSON.parse(body);
 
 			if (err) throw err;
@@ -292,17 +286,15 @@ describe('Elasticsearch migrations', function () {
 	it('run them again', function (done) {
 		let	dbMigrations;
 
-		esUri	= 'http://' + es.transport._config.host;
-
-		esConf.migrationScriptsPath	= path.join(__dirname, '../testmigrations_elasticsearch');
 		esConf.dbType	= 'elasticsearch';
-		esConf.dbDriver	= es;
+		esConf.url	= 'http://' + esConf.clientOptions.host;
+		esConf.migrationScriptsPath	= path.join(__dirname, '../testmigrations_elasticsearch');
+		esConf.log	= log;
 
-		dbMigrations = new DbMigration(esConf);
+		dbMigrations	= new DbMigration(esConf);
 
 		dbMigrations.run(function (err) {
 			if (err) throw err;
-
 			done();
 		});
 	});

@@ -1,8 +1,8 @@
 'use strict';
 
 const	topLogPrefix	= 'larvitdbmigration: index.js - ',
-	log	= require('winston'),
-	fs	= require('fs');
+	Lutils	= require('larvitutils'),
+	lutils	= new Lutils();
 
 function DbMigration(options) {
 	const	logPrefix	= topLogPrefix + 'DbMigration() - ',
@@ -12,41 +12,39 @@ function DbMigration(options) {
 		throw new Error('DbMigration must be instantianted');
 	}
 
-	that.options = options = options || {};
+	that.options	= options = options || {};
+
+	if ( ! that.options.log) {
+		that.options.log	= new lutils.Log();
+	}
+
+	that.log	= that.options.log;
 
 	if (options.tableName	=== undefined) options.tableName	= 'db_version';
+	if (options.indexName === undefined) options.indexName	= 'db_version';
 	if (options.migrationScriptsPath	=== undefined) options.migrationScriptsPath	= './dbmigration';
 
-	if (options.dbType === undefined) {
-		throw new Error('Missing options.dbType');
+	if (options.dbType !== 'elasticsearch' && options.dbType !== 'mariadb') {
+		throw new Error('Only dbType "elasticsearch" and "mariadb" are supported, please choose one');
+	}
+
+	// Resolve ./ paths to be relative to application path
+	if (that.options.migrationScriptsPath.substring(0, 2) === './') {
+		that.options.migrationScriptsPath	= process.cwd() + '/' + that.options.migrationScriptsPath.substring(2);
 	}
 
 	that.dbTypeFile	= __dirname + '/dbType/' + options.dbType + '.js';
+	that.DbType	= require(that.dbTypeFile);
+	that.dbType	= new that.DbType(that.options);
+	that.dbType.log	= that.log;
 
-	if ( ! fs.existsSync(that.dbTypeFile)) {
-		throw new Error('Invalid options.dbType "' + options.dbType + '", missing file: "' + dbTypeFile + '"');
-	}
+	that.log.verbose(logPrefix + 'Started with dbType: "' + that.options.dbType + '", tableName/indexName: "' + (that.options.tableName || that.options.indexName) + '", migrationScriptsPath: "' + that.options.migrationScriptsPath + '"');
 
-	if (options.dbType !== 'larvitdb' && options.dbType !== 'elasticsearch') {
-		throw new Error('Invalid options.dbType: "' + options.dbType + '"');
-	}
-
-	if (options.dbDriver === undefined) {
-		throw new Error('Missing options.dbDriver');
-	}
-
-	log.verbose(logPrefix + 'Started with dbType: "' + options.dbType + '", tableName: "' + options.tableName + '", migrationScriptsPath: "' + options.migrationScriptsPath + '"');
-
-	// Resolve ./ paths to be relative to application path
-	if (options.migrationScriptsPath.substring(0, 2) === './') {
-		options.migrationScriptsPath = process.cwd() + '/' + options.migrationScriptsPath.substring(2);
-	}
-
-	// Set functions from dbDriver
-	that.getLock	= require(that.dbTypeFile).getLock;
-	that.rmLock	= require(that.dbTypeFile).rmLock;
-	that.run	= require(that.dbTypeFile).run;
-	that.runScripts	= require(that.dbTypeFile).runScripts;
+	// Set functions from the dirver
+	that.getLock	= that.dbType.getLock;
+	that.rmLock	= that.dbType.rmLock;
+	that.run	= that.dbType.run;
+	that.runScripts	= that.dbType.runScripts;
 }
 
 exports = module.exports = DbMigration;

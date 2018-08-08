@@ -1,13 +1,26 @@
 'use strict';
 
-const	topLogPrefix	= 'larvitdbmigration: dbType/larvitdb.js: ',
+const	topLogPrefix	= 'larvitdbmigration: dbType/mariadb.js: ',
 	async	= require('async'),
 	mysql	= require('mysql2'),
-	log	= require('winston'),
 	fs	= require('fs'),
 	_	= require('lodash');
 
-function getLock(cb) {
+function Driver(options) {
+	const	that	= this;
+
+	that.options	= options || {};
+
+	if ( ! that.options.tableName) {
+		throw new Error('Missing required option "tableName"');
+	}
+
+	if ( ! that.options.dbDriver) {
+		throw new Error('Missing option dbDriver');
+	}
+}
+
+Driver.prototype.getLock = function getLock(cb) {
 	const	logPrefix	= topLogPrefix + 'getLock() - tableName: "' + this.options.tableName + '" - ',
 		tableName	= this.options.tableName,
 		that	= this,
@@ -21,7 +34,7 @@ function getLock(cb) {
 		tasks.push(function (cb) {
 			db.pool.getConnection(function (err, res) {
 				if (err) {
-					log.error(logPrefix + 'getConnection() err: ' + err.message);
+					that.log.error(logPrefix + 'getConnection() err: ' + err.message);
 				}
 
 				dbCon	= res;
@@ -36,14 +49,14 @@ function getLock(cb) {
 		tasks.push(function (cb) {
 			dbCon.query('SELECT running FROM `' + tableName + '`', function (err, rows) {
 				if (err) {
-					log.error(logPrefix + 'SQL err: ' + err.message);
+					that.log.error(logPrefix + 'SQL err: ' + err.message);
 					return cb(err);
 				}
 
 				if (rows.length === 0) {
 					const err = 'No database records';
 
-					log.error(logPrefix + err.message);
+					that.log.error(logPrefix + err.message);
 					return cb(err);
 				}
 
@@ -52,11 +65,11 @@ function getLock(cb) {
 				} else {
 					dbCon.query('UNLOCK TABLES;', function (err) {
 						if (err) {
-							log.error(logPrefix + 'SQL err: ' + err.message);
+							that.log.error(logPrefix + 'SQL err: ' + err.message);
 							return cb(err);
 						}
 
-						log.info(logPrefix + 'Another process is running the migrations, wait and try again soon.');
+						that.log.info(logPrefix + 'Another process is running the migrations, wait and try again soon.');
 						setTimeout(function () {
 							that.getLock(cb);
 						}, 500);
@@ -80,12 +93,12 @@ function getLock(cb) {
 
 		async.series(tasks, cb);
 	} catch (err) {
-		log.error(logPrefix + 'Error from driver: ' + err.message);
+		that.log.error(logPrefix + 'Error from driver: ' + err.message);
 		cb(err);
 	}
-}
+};
 
-function run(cb) {
+Driver.prototype.run = function run(cb) {
 	const	logPrefix	= topLogPrefix + 'run() - tableName: "' + this.options.tableName + '" - ',
 		tableName	= this.options.tableName,
 		tasks	= [],
@@ -136,7 +149,7 @@ function run(cb) {
 
 			curVer = parseInt(rows[0].version);
 
-			log.info(logPrefix + 'Current database version is ' + curVer);
+			that.log.info(logPrefix + 'Current database version is ' + curVer);
 
 			cb();
 		});
@@ -147,7 +160,7 @@ function run(cb) {
 		try {
 			that.runScripts(curVer + 1, cb);
 		} catch (err) {
-			log.error(logPrefix + 'Error from driver: ' + err.message);
+			that.log.error(logPrefix + 'Error from driver: ' + err.message);
 			cb(err);
 		}
 	});
@@ -160,14 +173,14 @@ function run(cb) {
 	async.series(tasks, cb);
 };
 
-function runScripts(startVersion, cb) {
+Driver.prototype.runScripts = function runScripts(startVersion, cb) {
 	const	migrationScriptsPath	= this.options.migrationScriptsPath,
 		tableName	= this.options.tableName,
 		logPrefix	= topLogPrefix + 'runScripts() - tableName: "' + this.options.tableName + '" - ',
 		that	= this,
 		db	= this.options.dbDriver;
 
-	log.verbose(logPrefix + 'Started with startVersion: "' + startVersion + '" in path: "' + migrationScriptsPath + '"');
+	that.log.verbose(logPrefix + 'Started with startVersion: "' + startVersion + '" in path: "' + migrationScriptsPath + '"');
 
 	try {
 		fs.readdir(migrationScriptsPath, function (err, items) {
@@ -176,20 +189,20 @@ function runScripts(startVersion, cb) {
 			let	localDbConf;
 
 			if (err) {
-				log.info(logPrefix + 'Could not read migration script path "' + migrationScriptsPath + '"');
+				that.log.info(logPrefix + 'Could not read migration script path "' + migrationScriptsPath + '"');
 				return cb();
 			}
 
 			for (let i = 0; items[i] !== undefined; i ++) {
 				if (items[i] === startVersion + '.js') {
-					log.info(logPrefix + 'Found js migration script #' + startVersion + ', running it now.');
+					that.log.info(logPrefix + 'Found js migration script #' + startVersion + ', running it now.');
 					require(migrationScriptsPath + '/' + startVersion + '.js').apply(that, [function (err) {
 						if (err) {
-							log.error(logPrefix + 'Got error running migration script ' + migrationScriptsPath + '/' + startVersion + '.js' + ': ' + err.message);
+							that.log.error(logPrefix + 'Got error running migration script ' + migrationScriptsPath + '/' + startVersion + '.js' + ': ' + err.message);
 							return cb(err);
 						}
 
-						log.debug(logPrefix + 'Js migration script #' + startVersion + ' ran. Updating database version and moving on.');
+						that.log.debug(logPrefix + 'Js migration script #' + startVersion + ' ran. Updating database version and moving on.');
 						db.query(sql, function (err) {
 							if (err) return cb(err);
 
@@ -201,7 +214,7 @@ function runScripts(startVersion, cb) {
 				} else if (items[i] === startVersion + '.sql') {
 					let	dbCon;
 
-					log.info(logPrefix + 'Found sql migration script #' + startVersion + ', running it now.');
+					that.log.info(logPrefix + 'Found sql migration script #' + startVersion + ', running it now.');
 
 					localDbConf	= _.cloneDeep(db.conf);
 					localDbConf.multipleStatements	= true;
@@ -209,11 +222,11 @@ function runScripts(startVersion, cb) {
 
 					dbCon.query(fs.readFileSync(migrationScriptsPath + '/' + items[i]).toString(), function (err) {
 						if (err) {
-							log.error(logPrefix + 'Migration file: ' + items[i] + ' SQL error: ' + err.message);
+							that.log.error(logPrefix + 'Migration file: ' + items[i] + ' SQL error: ' + err.message);
 							return cb(err);
 						}
 
-						log.info(logPrefix + 'Sql migration script #' + startVersion + ' ran. Updating database version and moving on.');
+						that.log.info(logPrefix + 'Sql migration script #' + startVersion + ' ran. Updating database version and moving on.');
 						db.query(sql, function (err) {
 							if (err) return cb(err);
 
@@ -227,17 +240,15 @@ function runScripts(startVersion, cb) {
 				}
 			}
 
-			log.info(logPrefix + 'Database migrated and done. Final version is ' + (startVersion - 1));
+			that.log.info(logPrefix + 'Database migrated and done. Final version is ' + (startVersion - 1));
 
 			// If we end up here, it means there are no more migration scripts to run
 			cb();
 		});
 	} catch (err) {
-		log.error(logPrefix + 'Uncaught error: ' + err.message);
+		that.log.error(logPrefix + 'Uncaught error: ' + err.message);
 		cb(err);
 	}
-}
+};
 
-exports.getLock	= getLock;
-exports.run	= run;
-exports.runScripts	= runScripts;
+exports = module.exports = Driver;

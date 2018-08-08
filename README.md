@@ -6,7 +6,7 @@ This is used to keep track of the database structure, and update it when need be
 
 Supported databases:
 
-* MariaDB(/MySQL)
+* MariaDB (and MySQL)
 * Elasticsearch
 
 A table/index by default called db_version will be created, containing a single integer.
@@ -34,6 +34,8 @@ In your application startup script, do something like this:
 
 const	DbMigration	= require('larvitdbmigration'),
 	options	= {},
+	winston	= require('winston'),
+	log	= winston.createLogger({'transports': [new winston.transports.Console()]}),
 	db	= require('larvitdb');
 
 let	dbMigration;
@@ -45,12 +47,13 @@ db.setup({
 	'database':	'baz'
 });
 
-options.dbType	= 'larvitdb';
+options.dbType	= 'mariadb';
 options.dbDriver	= db;
 options.tableName	= 'db_version';	// Optional - used as index name for elasticsearch
 options.migrationScriptsPath	= './dbmigration';	// Optional
+options.log	= log;	// Optional, will use log.silly(), log.debug(), log.verbose(), log.info(), log.warn() and log.error() if given.
 
-dbMigration = new DbMigration(options);
+dbMigration	= new DbMigration(options);
 
 dbMigration.run(function (err) {
 	if (err) throw err;
@@ -64,17 +67,18 @@ dbMigration.run(function (err) {
 ```javascript
 'use strict';
 
-const	elasticsearch	= require('elasticsearch'),
-	DbMigration	= require('larvitdbmigration'),
+const	DbMigration	= require('larvitdbmigration'),
 	options	= {},
-	es	= new elasticsearch.Client({'host': '127.0.0.1:9200'});
+	winston	= require('winston'),
+	log	= winston.createLogger({'transports': [new winston.transports.Console()]});
 
 let	dbMigration;
 
 options.dbType	= 'elasticsearch';
-options.dbDriver	= es;
-options.tableName	= 'db_version';	// Optional - used as index name
+options.url	= 'http://127.0.0.1:9200';
+options.indexName	= 'db_version'; // Optional
 options.migrationScriptsPath	= './dbmigration';	// Optional
+options.log	= log;	// Optional, will use log.silly(), log.debug(), log.verbose(), log.info(), log.warn() and log.error() if given.
 
 dbMigration	= new DbMigration(options);
 
@@ -116,19 +120,20 @@ Create the file process.cwd()/migrationScriptsPath/1.js with this content:
 ```javascript
 'use strict';
 
-exports = module.exports = function (cb) {
-	const	es	= this.options.dbDriver;
+const	request	= require('request');
 
-	es.indices.putMapping({
-		'index':	'foo',
-		'type':	'bar',
+exports = module.exports = function (cb) {
+	const	that	= this;
+
+	request({
+		'url':	that.options.url + '/some_index/_mapping/some_type,
+		'json':	true,
+		'method':	'PUT',
 		'body': {
-			'bar': {
-				'properties': {
-					'names': {
-						'type':	'string',
-						'position_increment_gap':	100
-					}
+			'properties': {
+				'names': {
+					'type':	'string',
+					'position_increment_gap':	100
 				}
 			}
 		}
