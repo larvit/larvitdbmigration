@@ -30,7 +30,8 @@ Driver.prototype.getLock = function getLock(retries, cb) {
 	request({
 		'method':	'PUT',
 		'uri':	that.options.url + '/fs/lock/global/_create',
-		'body':	'{}'
+		'json':	true,
+		'body':	{}
 	}, function (err, response) {
 		if (err) {
 			that.log.error(logPrefix + 'Can not get lock on ' + that.options.url + '/fs/lock/global/_create');

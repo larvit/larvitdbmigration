@@ -3,8 +3,7 @@
 const	topLogPrefix	= 'larvitdbmigration: dbType/mariadb.js: ',
 	async	= require('async'),
 	mysql	= require('mysql2'),
-	fs	= require('fs'),
-	_	= require('lodash');
+	fs	= require('fs');
 
 function Driver(options) {
 	const	that	= this;
@@ -184,9 +183,8 @@ Driver.prototype.runScripts = function runScripts(startVersion, cb) {
 
 	try {
 		fs.readdir(migrationScriptsPath, function (err, items) {
-			const sql = 'UPDATE `' + tableName + '` SET version = ' + parseInt(startVersion) + ';';
-
-			let	localDbConf;
+			const localDbConf	= {},
+				sql = 'UPDATE `' + tableName + '` SET version = ' + parseInt(startVersion) + ';';
 
 			if (err) {
 				that.log.info(logPrefix + 'Could not read migration script path "' + migrationScriptsPath + '"');
@@ -212,11 +210,45 @@ Driver.prototype.runScripts = function runScripts(startVersion, cb) {
 
 					return;
 				} else if (items[i] === startVersion + '.sql') {
+					const	validDbOptions	= [];
+
 					let	dbCon;
 
 					that.log.info(logPrefix + 'Found sql migration script #' + startVersion + ', running it now.');
 
-					localDbConf	= _.cloneDeep(db.conf);
+					validDbOptions.push('host');
+					validDbOptions.push('port');
+					validDbOptions.push('localAddress');
+					validDbOptions.push('socketPath');
+					validDbOptions.push('user');
+					validDbOptions.push('password');
+					validDbOptions.push('database');
+					validDbOptions.push('charset');
+					validDbOptions.push('timezone');
+					validDbOptions.push('connectTimeout');
+					validDbOptions.push('stringifyObjects');
+					validDbOptions.push('insecureAuth');
+					validDbOptions.push('typeCast');
+					validDbOptions.push('queryFormat');
+					validDbOptions.push('supportBigNumbers');
+					validDbOptions.push('bigNumberStrings');
+					validDbOptions.push('dateStrings');
+					validDbOptions.push('debug');
+					validDbOptions.push('trace');
+					validDbOptions.push('multipleStatements');
+					validDbOptions.push('flags');
+					validDbOptions.push('ssl');
+
+					// Valid for pools
+					validDbOptions.push('waitForConnections');
+					validDbOptions.push('connectionLimit');
+					validDbOptions.push('queueLimit');
+
+					for (const key of Object.keys(db.conf)) {
+						if (validDbOptions.indexOf(key) !== - 1) {
+							localDbConf[key]	= db.conf[key];
+						}
+					}
 					localDbConf.multipleStatements	= true;
 					dbCon	= mysql.createConnection(localDbConf);
 

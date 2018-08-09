@@ -12,7 +12,6 @@
     "async": "^2.0.1",
     "json-stringify-safe": "^5.0.1",
     "larvitutils": "^2.0.0",
-    "lodash": "^4.7.0",
     "request": "^2.81.0"
   },
   "description": "node.js database migration tool",

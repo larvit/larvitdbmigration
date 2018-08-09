@@ -59,9 +59,14 @@ before(function (done) {
 		}
 
 		function runMariaDbSetup(mariaDbConfFile) {
+			let	conf;
+
 			log.verbose('DB config: ' + JSON.stringify(require(mariaDbConfFile)));
 
-			db.setup(require(mariaDbConfFile), function (err) {
+			conf	= require(mariaDbConfFile);
+			conf.log	= log;
+
+			db.setup(conf, function (err) {
 				if (err) {
 					log.error('Database setup problem: ' + err.message);
 					process.exit(1);
