@@ -32,28 +32,28 @@ In your application startup script, do something like this:
 ```javascript
 'use strict';
 
-const	DbMigration	= require('larvitdbmigration'),
-	options	= {},
-	winston	= require('winston'),
-	log	= winston.createLogger({'transports': [new winston.transports.Console()]}),
-	db	= require('larvitdb');
+const DbMigration = require('larvitdbmigration');
+const options = {};
+const winston = require('winston');
+const log = winston.createLogger({'transports': [new winston.transports.Console()]});
+const db = require('larvitdb');
 
-let	dbMigration;
+let dbMigration;
 
 db.setup({
-	'host':	'127.0.0.1',
-	'user':	'foo',
-	'password':	'bar',
-	'database':	'baz'
+	'host': '127.0.0.1',
+	'user': 'foo',
+	'password': 'bar',
+	'database': 'baz'
 });
 
-options.dbType	= 'mariadb';
-options.dbDriver	= db;
-options.tableName	= 'db_version';	// Optional - used as index name for elasticsearch
-options.migrationScriptsPath	= './dbmigration';	// Optional
-options.log	= log;	// Optional, will use log.silly(), log.debug(), log.verbose(), log.info(), log.warn() and log.error() if given.
+options.dbType = 'mariadb';
+options.dbDriver = db;
+options.tableName = 'db_version';	// Optional - used as index name for elasticsearch
+options.migrationScriptsPath = './dbmigration';	// Optional
+options.log = log;	// Optional, will use log.silly(), log.debug(), log.verbose(), log.info(), log.warn() and log.error() if given.
 
-dbMigration	= new DbMigration(options);
+dbMigration = new DbMigration(options);
 
 dbMigration.run(function (err) {
 	if (err) throw err;
@@ -67,20 +67,20 @@ dbMigration.run(function (err) {
 ```javascript
 'use strict';
 
-const	DbMigration	= require('larvitdbmigration'),
-	options	= {},
-	winston	= require('winston'),
-	log	= winston.createLogger({'transports': [new winston.transports.Console()]});
+const DbMigration = require('larvitdbmigration');
+const options = {};
+const winston = require('winston');
+const log = winston.createLogger({'transports': [new winston.transports.Console()]});
 
-let	dbMigration;
+let dbMigration;
 
-options.dbType	= 'elasticsearch';
-options.url	= 'http://127.0.0.1:9200';
-options.indexName	= 'db_version'; // Optional
-options.migrationScriptsPath	= './dbmigration';	// Optional
-options.log	= log;	// Optional, will use log.silly(), log.debug(), log.verbose(), log.info(), log.warn() and log.error() if given.
+options.dbType = 'elasticsearch';
+options.url = 'http://127.0.0.1:9200';
+options.indexName = 'db_version'; // Optional
+options.migrationScriptsPath = './dbmigration';	// Optional
+options.log = log;	// Optional, will use log.silly(), log.debug(), log.verbose(), log.info(), log.warn() and log.error() if given.
 
-dbMigration	= new DbMigration(options);
+dbMigration = new DbMigration(options);
 
 dbMigration.run(function (err) {
 	if (err) throw err;
@@ -107,7 +107,7 @@ Create the file process.cwd()/migrationScriptsPath/1.js with this content:
 'use strict';
 
 exports = module.exports = function (cb) {
-	const	db	= this.options.dbDriver;
+	const db = this.options.dbDriver;
 
 	db.query('ALTER TABLE bloj CHANGE nisse hasse int(11);', cb);
 };
@@ -120,20 +120,20 @@ Create the file process.cwd()/migrationScriptsPath/1.js with this content:
 ```javascript
 'use strict';
 
-const	request	= require('request');
+const request = require('request');
 
 exports = module.exports = function (cb) {
-	const	that	= this;
+	const that = this;
 
 	request({
-		'url':	that.options.url + '/some_index/_mapping/some_type',
-		'json':	true,
-		'method':	'PUT',
+		'url': that.options.url + '/some_index/_mapping/some_type',
+		'json': true,
+		'method': 'PUT',
 		'body': {
 			'properties': {
 				'names': {
-					'type':	'string',
-					'position_increment_gap':	100
+					'type': 'string',
+					'position_increment_gap': 100
 				}
 			}
 		}

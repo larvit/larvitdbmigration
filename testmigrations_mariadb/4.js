@@ -1,10 +1,10 @@
 'use strict';
 
-const	async	= require('async');
+const async = require('async');
 
 exports = module.exports = function (cb) {
-	const	tasks	= [],
-		db	= this.options.dbDriver;
+	const tasks = [];
+	const db = this.options.dbDriver;
 
 	tasks.push(function (cb) {
 		db.query('DROP FUNCTION IF EXISTS multi_three;', cb);

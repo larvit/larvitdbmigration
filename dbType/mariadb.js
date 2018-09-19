@@ -1,34 +1,34 @@
 'use strict';
 
-const	topLogPrefix	= 'larvitdbmigration: dbType/mariadb.js: ',
-	async	= require('async'),
-	mysql	= require('mysql2'),
-	fs	= require('fs');
+const topLogPrefix = 'larvitdbmigration: dbType/mariadb.js: ';
+const async = require('async');
+const mysql = require('mysql2');
+const fs = require('fs');
 
 function Driver(options) {
-	const	that	= this;
+	const that = this;
 
-	that.options	= options || {};
+	that.options = options || {};
 
-	if ( ! that.options.tableName) {
+	if (! that.options.tableName) {
 		throw new Error('Missing required option "tableName"');
 	}
 
-	if ( ! that.options.dbDriver) {
+	if (! that.options.dbDriver) {
 		throw new Error('Missing option dbDriver');
 	}
 }
 
 Driver.prototype.getLock = function getLock(cb) {
-	const	logPrefix	= topLogPrefix + 'getLock() - tableName: "' + this.options.tableName + '" - ',
-		tableName	= this.options.tableName,
-		that	= this,
-		db	= that.options.dbDriver;
+	const logPrefix = topLogPrefix + 'getLock() - tableName: "' + this.options.tableName + '" - ';
+	const tableName = this.options.tableName;
+	const that = this;
+	const db = that.options.dbDriver;
 
 	try {
-		const	tasks	= [];
+		const tasks = [];
 
-		let	dbCon;
+		let dbCon;
 
 		tasks.push(function (cb) {
 			db.pool.getConnection(function (err, res) {
@@ -36,7 +36,7 @@ Driver.prototype.getLock = function getLock(cb) {
 					that.log.error(logPrefix + 'getConnection() err: ' + err.message);
 				}
 
-				dbCon	= res;
+				dbCon = res;
 				cb(err);
 			});
 		});
@@ -49,6 +49,7 @@ Driver.prototype.getLock = function getLock(cb) {
 			dbCon.query('SELECT running FROM `' + tableName + '`', function (err, rows) {
 				if (err) {
 					that.log.error(logPrefix + 'SQL err: ' + err.message);
+
 					return cb(err);
 				}
 
@@ -56,6 +57,7 @@ Driver.prototype.getLock = function getLock(cb) {
 					const err = 'No database records';
 
 					that.log.error(logPrefix + err.message);
+
 					return cb(err);
 				}
 
@@ -65,6 +67,7 @@ Driver.prototype.getLock = function getLock(cb) {
 					dbCon.query('UNLOCK TABLES;', function (err) {
 						if (err) {
 							that.log.error(logPrefix + 'SQL err: ' + err.message);
+
 							return cb(err);
 						}
 
@@ -98,17 +101,18 @@ Driver.prototype.getLock = function getLock(cb) {
 };
 
 Driver.prototype.run = function run(cb) {
-	const	logPrefix	= topLogPrefix + 'run() - tableName: "' + this.options.tableName + '" - ',
-		tableName	= this.options.tableName,
-		tasks	= [],
-		that	= this,
-		db	= this.options.dbDriver;
+	const logPrefix = topLogPrefix + 'run() - tableName: "' + this.options.tableName + '" - ';
+	const tableName = this.options.tableName;
+	const tasks = [];
+	const that = this;
+	const db = this.options.dbDriver;
 
-	let	curVer;
+	let curVer;
 
 	// Create table if it does not exist
 	tasks.push(function (cb) {
 		const sql = 'CREATE TABLE IF NOT EXISTS `' + tableName + '` (`id` tinyint(1) unsigned NOT NULL DEFAULT \'1\', `version` int(10) unsigned NOT NULL DEFAULT \'0\', `running` tinyint(3) unsigned NOT NULL DEFAULT \'0\', PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=ascii COLLATE=ascii_bin COMMENT=\'Used for automatic database versioning. Do not modify!\';';
+
 		db.query(sql, cb);
 	});
 
@@ -173,21 +177,22 @@ Driver.prototype.run = function run(cb) {
 };
 
 Driver.prototype.runScripts = function runScripts(startVersion, cb) {
-	const	migrationScriptsPath	= this.options.migrationScriptsPath,
-		tableName	= this.options.tableName,
-		logPrefix	= topLogPrefix + 'runScripts() - tableName: "' + this.options.tableName + '" - ',
-		that	= this,
-		db	= this.options.dbDriver;
+	const migrationScriptsPath = this.options.migrationScriptsPath;
+	const tableName = this.options.tableName;
+	const logPrefix = topLogPrefix + 'runScripts() - tableName: "' + this.options.tableName + '" - ';
+	const that = this;
+	const db = this.options.dbDriver;
 
 	that.log.verbose(logPrefix + 'Started with startVersion: "' + startVersion + '" in path: "' + migrationScriptsPath + '"');
 
 	try {
 		fs.readdir(migrationScriptsPath, function (err, items) {
-			const localDbConf	= {},
-				sql = 'UPDATE `' + tableName + '` SET version = ' + parseInt(startVersion) + ';';
+			const localDbConf = {};
+			const sql = 'UPDATE `' + tableName + '` SET version = ' + parseInt(startVersion) + ';';
 
 			if (err) {
 				that.log.info(logPrefix + 'Could not read migration script path "' + migrationScriptsPath + '"');
+
 				return cb();
 			}
 
@@ -197,6 +202,7 @@ Driver.prototype.runScripts = function runScripts(startVersion, cb) {
 					require(migrationScriptsPath + '/' + startVersion + '.js').apply(that, [function (err) {
 						if (err) {
 							that.log.error(logPrefix + 'Got error running migration script ' + migrationScriptsPath + '/' + startVersion + '.js' + ': ' + err.message);
+
 							return cb(err);
 						}
 
@@ -210,9 +216,9 @@ Driver.prototype.runScripts = function runScripts(startVersion, cb) {
 
 					return;
 				} else if (items[i] === startVersion + '.sql') {
-					const	validDbOptions	= [];
+					const validDbOptions = [];
 
-					let	dbCon;
+					let dbCon;
 
 					that.log.info(logPrefix + 'Found sql migration script #' + startVersion + ', running it now.');
 
@@ -246,15 +252,16 @@ Driver.prototype.runScripts = function runScripts(startVersion, cb) {
 
 					for (const key of Object.keys(db.conf)) {
 						if (validDbOptions.indexOf(key) !== - 1) {
-							localDbConf[key]	= db.conf[key];
+							localDbConf[key] = db.conf[key];
 						}
 					}
-					localDbConf.multipleStatements	= true;
-					dbCon	= mysql.createConnection(localDbConf);
+					localDbConf.multipleStatements = true;
+					dbCon = mysql.createConnection(localDbConf);
 
 					dbCon.query(fs.readFileSync(migrationScriptsPath + '/' + items[i]).toString(), function (err) {
 						if (err) {
 							that.log.error(logPrefix + 'Migration file: ' + items[i] + ' SQL error: ' + err.message);
+
 							return cb(err);
 						}
 

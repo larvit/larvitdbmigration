@@ -1,24 +1,24 @@
 'use strict';
 
-const	DbMigration	= require(__dirname + '/../index.js'),
-	request	= require('request'),
-	assert	= require('assert'),
-	Lutils	= require('larvitutils'),
-	lutils	= new Lutils(),
-	async	= require('async'),
-	path	= require('path'),
-	log	= new lutils.Log('silence!!!'),
-	db	= require('larvitdb'),
-	fs	= require('fs');
+const DbMigration = require(__dirname + '/../index.js');
+const request = require('request');
+const assert = require('assert');
+const Lutils = require('larvitutils');
+const lutils = new Lutils();
+const async = require('async');
+const path = require('path');
+const log = new lutils.Log('silence!!!');
+const db = require('larvitdb');
+const fs = require('fs');
 
-let	mariaDbConf,
-	esConf;
+let mariaDbConf;
+let esConf;
 
 before(function (done) {
 	const	tasks	= [];
 
-	let	mariaDbConfFile,
-		esConfFile;
+	let mariaDbConfFile;
+	let esConfFile;
 
 	// Set conf file paths
 	tasks.push(function (cb) {
@@ -59,12 +59,12 @@ before(function (done) {
 		}
 
 		function runMariaDbSetup(mariaDbConfFile) {
-			let	conf;
+			let conf;
 
 			log.verbose('DB config: ' + JSON.stringify(require(mariaDbConfFile)));
 
-			conf	= require(mariaDbConfFile);
-			conf.log	= log;
+			conf = require(mariaDbConfFile);
+			conf.log = log;
 
 			db.setup(conf, function (err) {
 				if (err) {
@@ -77,7 +77,7 @@ before(function (done) {
 		}
 
 		fs.stat(mariaDbConfFile, function (err) {
-			const	altMariaDbConfFile	= __dirname + '/../config/' + mariaDbConfFile;
+			const altMariaDbConfFile = __dirname + '/../config/' + mariaDbConfFile;
 
 			if (err) {
 				log.info('Failed to find config file "' + mariaDbConfFile + '", retrying with "' + altMariaDbConfFile + '"');
@@ -88,11 +88,11 @@ before(function (done) {
 						process.exit(1);
 					}
 
-					mariaDbConf	= require(altMariaDbConfFile);
+					mariaDbConf = require(altMariaDbConfFile);
 					runMariaDbSetup(altMariaDbConfFile);
 				});
 			} else {
-				mariaDbConf	= require(mariaDbConfFile);
+				mariaDbConf = require(mariaDbConfFile);
 				runMariaDbSetup(mariaDbConfFile);
 			}
 		});
@@ -101,17 +101,16 @@ before(function (done) {
 	// Elasticsearch
 	tasks.push(function (cb) {
 		function checkEmptyEs() {
-			const	reqOptions	= {};
+			const reqOptions = {};
 
-			reqOptions.url	= 'http://' + esConf.clientOptions.host + '/_cat/indices?format=json';
-			reqOptions.json	= true;
+			reqOptions.url = 'http://' + esConf.clientOptions.host + '/_cat/indices?format=json';
+			reqOptions.json = true;
 
 			request(reqOptions, function (err, response, body) {
 				if (err) throw err;
 
-				if ( ! Array.isArray(body) || body.length !== 0) {
+				if (! Array.isArray(body) || body.length !== 0) {
 					throw new Error('Database is not empty. To make a test, you must supply an empty database!');
-					process.exit(1);
 				}
 
 				cb(err);
@@ -119,7 +118,7 @@ before(function (done) {
 		}
 
 		fs.stat(esConfFile, function (err) {
-			const	altEsConfFile	= __dirname + '/../config/' + esConfFile;
+			const altEsConfFile = __dirname + '/../config/' + esConfFile;
 
 			if (err) {
 				log.info('Failed to find config file "' + esConfFile + '", retrying with "' + altEsConfFile + '"');
@@ -130,11 +129,11 @@ before(function (done) {
 						process.exit(1);
 					}
 
-					esConf	= require(altEsConfFile);
+					esConf = require(altEsConfFile);
 					checkEmptyEs(altEsConfFile);
 				});
 			} else {
-				esConf	= require(esConfFile);
+				esConf = require(esConfFile);
 				checkEmptyEs(esConfFile);
 			}
 		});
@@ -144,18 +143,18 @@ before(function (done) {
 });
 
 after(function (done) {
-	const	tasks	= [];
+	const tasks = [];
 
 	tasks.push(function (cb) {
 		db.removeAllTables(cb);
 	});
 
 	tasks.push(function (cb) {
-		const	reqOptions	= {};
+		const reqOptions = {};
 
-		reqOptions.url	= 'http://' + esConf.clientOptions.host + '/_all';
-		reqOptions.json	= true;
-		reqOptions.method	= 'DELETE';
+		reqOptions.url = 'http://' + esConf.clientOptions.host + '/_all';
+		reqOptions.json = true;
+		reqOptions.method = 'DELETE';
 
 		request(reqOptions, cb);
 	});
@@ -171,14 +170,14 @@ describe('MariaDB migrations', function () {
 	this.slow(300);
 
 	it('Run them', function (done) {
-		let	dbMigrations;
+		let dbMigrations;
 
-		mariaDbConf.migrationScriptsPath	= path.join(__dirname, '../testmigrations_mariadb');
-		mariaDbConf.dbType	= 'mariadb';
-		mariaDbConf.dbDriver	= db;
-		mariaDbConf.log	= log;
+		mariaDbConf.migrationScriptsPath = path.join(__dirname, '../testmigrations_mariadb');
+		mariaDbConf.dbType = 'mariadb';
+		mariaDbConf.dbDriver = db;
+		mariaDbConf.log = log;
 
-		dbMigrations	= new DbMigration(mariaDbConf);
+		dbMigrations = new DbMigration(mariaDbConf);
 
 		dbMigrations.run(function (err) {
 			if (err) throw err;
@@ -190,8 +189,8 @@ describe('MariaDB migrations', function () {
 		db.query('SELECT * FROM bloj', function (err, rows) {
 			if (err) throw err;
 
-			assert.deepStrictEqual(rows.length,	1);
-			assert.deepStrictEqual(rows[0].hasse,	42);
+			assert.deepStrictEqual(rows.length, 1);
+			assert.deepStrictEqual(rows[0].hasse, 42);
 			done();
 		});
 	});
@@ -200,7 +199,7 @@ describe('MariaDB migrations', function () {
 		db.query('SELECT multi_two(4) AS foo', function (err, rows) {
 			if (err) throw err;
 
-			assert.deepStrictEqual(rows[0].foo,	8);
+			assert.deepStrictEqual(rows[0].foo, 8);
 			done();
 		});
 	});
@@ -209,13 +208,13 @@ describe('MariaDB migrations', function () {
 		db.query('SELECT multi_three(4) AS foo', function (err, rows) {
 			if (err) throw err;
 
-			assert.deepStrictEqual(rows[0].foo,	12);
+			assert.deepStrictEqual(rows[0].foo, 12);
 			done();
 		});
 	});
 
 	it('Should fail when migration returns error', function (done) {
-		const	tasks	= [];
+		const tasks = [];
 
 		// Clean out database
 		tasks.push(function (cb) {
@@ -224,14 +223,14 @@ describe('MariaDB migrations', function () {
 
 		// Run failing migrations
 		tasks.push(function (cb) {
-			let	dbMigrations;
+			let dbMigrations;
 
-			mariaDbConf.migrationScriptsPath	= path.join(__dirname, '../testmigrations_mariadb_failing');
-			mariaDbConf.dbType	= 'mariadb';
-			mariaDbConf.dbDriver	= db;
-			mariaDbConf.log	= log;
+			mariaDbConf.migrationScriptsPath = path.join(__dirname, '../testmigrations_mariadb_failing');
+			mariaDbConf.dbType = 'mariadb';
+			mariaDbConf.dbDriver = db;
+			mariaDbConf.log = log;
 
-			dbMigrations	= new DbMigration(mariaDbConf);
+			dbMigrations = new DbMigration(mariaDbConf);
 
 			dbMigrations.run(function (err) {
 				assert(err instanceof Error, 'err should be an instance of Error');
@@ -250,12 +249,12 @@ describe('Elasticsearch migrations', function () {
 	it('Run them', function (done) {
 		let	dbMigrations;
 
-		esConf.dbType	= 'elasticsearch';
-		esConf.url	= 'http://' + esConf.clientOptions.host;
-		esConf.migrationScriptsPath	= path.join(__dirname, '../testmigrations_elasticsearch');
-		esConf.log	= log;
+		esConf.dbType = 'elasticsearch';
+		esConf.url = 'http://' + esConf.clientOptions.host;
+		esConf.migrationScriptsPath = path.join(__dirname, '../testmigrations_elasticsearch');
+		esConf.log = log;
 
-		dbMigrations	= new DbMigration(esConf);
+		dbMigrations = new DbMigration(esConf);
 
 		dbMigrations.run(function (err) {
 			if (err) throw err;
@@ -265,12 +264,12 @@ describe('Elasticsearch migrations', function () {
 
 	it('should check the db_versions index', function (done) {
 		request('http://' + esConf.clientOptions.host + '/db_version/db_version/1', function (err, response, body) {
-			const	jsonBody	= JSON.parse(body);
+			const jsonBody = JSON.parse(body);
 
 			if (err) throw err;
 
-			assert.strictEqual(jsonBody._source.version,	2);
-			assert.strictEqual(jsonBody._source.status,	'finnished');
+			assert.strictEqual(jsonBody._source.version, 2);
+			assert.strictEqual(jsonBody._source.status, 'finnished');
 
 			done();
 		});
@@ -278,7 +277,7 @@ describe('Elasticsearch migrations', function () {
 
 	it('should check the foo index', function (done) {
 		request('http://' + esConf.clientOptions.host + '/foo/bar/666', function (err, response, body) {
-			const	jsonBody	= JSON.parse(body);
+			const jsonBody = JSON.parse(body);
 
 			if (err) throw err;
 
@@ -291,12 +290,12 @@ describe('Elasticsearch migrations', function () {
 	it('run them again', function (done) {
 		let	dbMigrations;
 
-		esConf.dbType	= 'elasticsearch';
-		esConf.url	= 'http://' + esConf.clientOptions.host;
-		esConf.migrationScriptsPath	= path.join(__dirname, '../testmigrations_elasticsearch');
-		esConf.log	= log;
+		esConf.dbType = 'elasticsearch';
+		esConf.url = 'http://' + esConf.clientOptions.host;
+		esConf.migrationScriptsPath = path.join(__dirname, '../testmigrations_elasticsearch');
+		esConf.log = log;
 
-		dbMigrations	= new DbMigration(esConf);
+		dbMigrations = new DbMigration(esConf);
 
 		dbMigrations.run(function (err) {
 			if (err) throw err;
