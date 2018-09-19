@@ -126,7 +126,7 @@ exports = module.exports = function (cb) {
 	const	that	= this;
 
 	request({
-		'url':	that.options.url + '/some_index/_mapping/some_type,
+		'url':	that.options.url + '/some_index/_mapping/some_type',
 		'json':	true,
 		'method':	'PUT',
 		'body': {
