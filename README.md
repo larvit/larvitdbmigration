@@ -2,7 +2,7 @@
 
 # Database migration tool
 
-This is used to keep track of the database structure, and update it when need be via deploys.
+This is used to keep track of the database structure, content etc, and update it when need be via deploys.
 
 Supported databases:
 
