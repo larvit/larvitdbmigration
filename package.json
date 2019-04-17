@@ -16,7 +16,7 @@
   },
   "description": "node.js database migration tool",
   "devDependencies": {
-    "larvitdb": "2.1.1",
+    "larvitdb": "3.0.2",
     "eslint": "5.16.0",
     "mocha": "6.1.3",
     "mocha-eslint": "5.0.0",
