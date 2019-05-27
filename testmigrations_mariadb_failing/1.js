@@ -1,5 +1,5 @@
 'use strict';
 
-exports = module.exports = function (cb) {
-	cb(new Error('some error'));
+exports = module.exports = function () {
+	throw new Error('some error');
 };

@@ -3,16 +3,18 @@
 const request = require('request');
 
 // Create index
-exports = module.exports = function (cb) {
-	const esUri = this.options.url;
+exports = module.exports = async function (options) {
+	const esUri = options.url;
 
-	request.put(esUri + '/foo', function (err, response) {
-		if (err) throw err;
+	await new Promise((resolve, reject) => {
+		request.put(esUri + '/foo', (err, response) => {
+			if (err) return reject(err);
 
-		if (response.statusCode !== 200) {
-			throw new Error('non-200 statusCode: ' + response.statusCode);
-		}
+			if (response.statusCode !== 200) {
+				return reject(new Error('non-200 statusCode: ' + response.statusCode));
+			}
 
-		cb();
+			resolve();
+		});
 	});
 };

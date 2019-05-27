@@ -17,9 +17,7 @@ Each migration script will be ran, and the db_version increased, until no more m
 
 ## Installation
 
-```bash
-npm i --save larvitdbmigration
-```
+    npm i larvitdbmigration
 
 ## Usage
 
@@ -33,32 +31,25 @@ In your application startup script, do something like this:
 'use strict';
 
 const DbMigration = require('larvitdbmigration');
-const options = {};
-const winston = require('winston');
-const log = winston.createLogger({'transports': [new winston.transports.Console()]});
-const db = require('larvitdb');
-
-let dbMigration;
-
-db.setup({
+const Db = require('larvitdb');
+const dbDriver = new Db({
 	'host': '127.0.0.1',
 	'user': 'foo',
 	'password': 'bar',
 	'database': 'baz'
 });
+const dbMigration = new DbMigration({
+	dbType: 'mariadb',
+	dbDriver,
+	tableName: 'db_version', // Optional - used as index name for elasticsearch
+	migrationScriptPath: './dbmigration', // Optional
+	log // Optional, will use log.silly(), log.debug(), log.verbose(), log.info(), log.warn() and log.error() if given.
+});
 
-options.dbType = 'mariadb';
-options.dbDriver = db;
-options.tableName = 'db_version';	// Optional - used as index name for elasticsearch
-options.migrationScriptsPath = './dbmigration';	// Optional
-options.log = log;	// Optional, will use log.silly(), log.debug(), log.verbose(), log.info(), log.warn() and log.error() if given.
-
-dbMigration = new DbMigration(options);
-
-dbMigration.run(function (err) {
-	if (err) throw err;
-
+dbMigration.run().then(() => {
 	// Now database is migrated and ready for use!
+}).catch(err => {
+	throw err;
 });
 ```
 
@@ -68,24 +59,18 @@ dbMigration.run(function (err) {
 'use strict';
 
 const DbMigration = require('larvitdbmigration');
-const options = {};
-const winston = require('winston');
-const log = winston.createLogger({'transports': [new winston.transports.Console()]});
+const dbMigration = new DbMigration({
+	dbType: 'elasticsearch',
+	url: 'http://127.0.0.1:9200',
+	indexName: 'db_version', // Optional
+	migrationScriptPath: './dbmigration', // Optional
+	log// Optional, will use log.silly(), log.debug(), log.verbose(), log.info(), log.warn() and log.error() if given.
+});
 
-let dbMigration;
-
-options.dbType = 'elasticsearch';
-options.url = 'http://127.0.0.1:9200';
-options.indexName = 'db_version'; // Optional
-options.migrationScriptsPath = './dbmigration';	// Optional
-options.log = log;	// Optional, will use log.silly(), log.debug(), log.verbose(), log.info(), log.warn() and log.error() if given.
-
-dbMigration = new DbMigration(options);
-
-dbMigration.run(function (err) {
-	if (err) throw err;
-
+dbMigration.run().then(() => {
 	// Now database is migrated and ready for use!
+}).catch(err => {
+	throw err;
 });
 ```
 
@@ -101,43 +86,50 @@ And in the next deploy we'd like to change the column name "nisse" to "hasse". F
 
 #### MariaDB / MySQL, Javascript
 
-Create the file process.cwd()/migrationScriptsPath/1.js with this content:
+Create the file process.cwd()/migrationScriptPath/1.js with this content:
 
 ```javascript
 'use strict';
 
-exports = module.exports = function (cb) {
-	const db = this.options.dbDriver;
+// Always make the function async (or explicitly return a promise, see elasticsearch example below)
+exports = module.exports = async function (options) {
+	const {db} = options;
 
-	db.query('ALTER TABLE bloj CHANGE nisse hasse int(11);', cb);
+	await db.query('ALTER TABLE bloj CHANGE nisse hasse int(11);');
 };
 ```
 
 #### Elasticsearch
 
-Create the file process.cwd()/migrationScriptsPath/1.js with this content:
+Create the file process.cwd()/migrationScriptPath/1.js with this content:
 
 ```javascript
 'use strict';
 
 const request = require('request');
 
-exports = module.exports = function (cb) {
-	const that = this;
+exports = module.exports = function (options) {
+	const {url} = options;
 
-	request({
-		'url': that.options.url + '/some_index/_mapping/some_type',
-		'json': true,
-		'method': 'PUT',
-		'body': {
-			'properties': {
-				'names': {
-					'type': 'string',
-					'position_increment_gap': 100
+	// Return a promise instead of having the function async, see async example above
+	return new Promise((resolve, reject) => {
+		request({
+			url: url + '/some_index/_mapping/some_type',
+			json: true,
+			method: 'PUT',
+			body: {
+				properties: {
+					names: {
+						type: 'string',
+						position_increment_gap: 100
+					}
 				}
 			}
-		}
-	}, cb);
+		}, err => {
+			if (err) reject(err);
+			else resolve();
+		});
+	});
 };
 ```
 
@@ -145,7 +137,7 @@ exports = module.exports = function (cb) {
 
 _IMPORTANT!_ SQL files will be ignored if a .js file exists.
 
-Create the file process.cwd()/migrationScriptsPath/1.sql with this content:
+Create the file process.cwd()/migrationScriptPath/1.sql with this content:
 
 ```SQL
 ALTER TABLE bloj CHANGE nisse hasse int(11);

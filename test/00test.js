@@ -1,5 +1,7 @@
 'use strict';
 
+require('dotenv').config();
+
 const DbMigration = require(__dirname + '/../index.js');
 const request = require('request');
 const assert = require('assert');
@@ -7,251 +9,144 @@ const Lutils = require('larvitutils');
 const lutils = new Lutils();
 const async = require('async');
 const path = require('path');
-const log = new lutils.Log('silence!!!');
-const db = require('larvitdb');
-const fs = require('fs');
+const log = new lutils.Log('error');
+const Db = require('larvitdb');
 
 let mariaDbConf;
 let esConf;
+let db;
 
-before(function (done) {
-	const	tasks	= [];
+before(async () => {
+	// Setup MariaDB
+	const mariaConf = {
+		host: process.env.DB_HOST || '127.0.0.1',
+		user: process.env.DB_USER || 'root',
+		port: process.env.DB_PORT || '3306',
+		password: process.env.DB_PASSWORD || 'toor',
+		database: process.env.DB_DATABASE || 'test'
+	};
+	db = new Db(mariaConf);
+	const {rows} = await db.query('SHOW TABLES');
 
-	let mariaDbConfFile;
-	let esConfFile;
+	if (rows.length) {
+		log.error('Database is not empty. To make a test, you must supply an empty database!');
+		process.exit(1);
+	}
+/*
+	// Setup ES
+	const esConf = {
+		host: process.env.ES_HOST || '127.0.0.1:9300'
+	};
 
-	// Set conf file paths
-	tasks.push(function (cb) {
-		if (process.env.ESCONFFILE === undefined) {
-			esConfFile	= __dirname + '/../config/es_test.json';
-		} else {
-			esConfFile	= process.env.ESCONFFILE;
-		}
-
-		if (process.env.DBCONFFILE === undefined) {
-			mariaDbConfFile	= __dirname + '/../config/db_test.json';
-		} else {
-			mariaDbConfFile	= process.env.DBCONFFILE;
-		}
-
-		log.verbose('MariaDB config file: "' + mariaDbConfFile + '"');
-		log.verbose('Elasticsearch config file: "' + esConfFile + '"');
-
-		cb();
-	});
-
-	// MariaDb
-	tasks.push(function (cb) {
-		function checkEmptyMariaDb() {
-			db.query('SHOW TABLES', function (err, rows) {
-				if (err) {
-					log.error(err);
-					process.exit(1);
-				}
-
-				if (rows.length) {
-					log.error('Database is not empty. To make a test, you must supply an empty database!');
-					process.exit(1);
-				}
-
-				cb();
-			});
-		}
-
-		function runMariaDbSetup(mariaDbConfFile) {
-			let conf;
-
-			log.verbose('DB config: ' + JSON.stringify(require(mariaDbConfFile)));
-
-			conf = require(mariaDbConfFile);
-			conf.log = log;
-
-			db.setup(conf, function (err) {
-				if (err) {
-					log.error('Database setup problem: ' + err.message);
-					process.exit(1);
-				}
-
-				checkEmptyMariaDb();
-			});
-		}
-
-		fs.stat(mariaDbConfFile, function (err) {
-			const altMariaDbConfFile = __dirname + '/../config/' + mariaDbConfFile;
-
-			if (err) {
-				log.info('Failed to find config file "' + mariaDbConfFile + '", retrying with "' + altMariaDbConfFile + '"');
-
-				fs.stat(altMariaDbConfFile, function (err) {
-					if (err) {
-						log.error('MariaDb config file does not exist');
-						process.exit(1);
-					}
-
-					mariaDbConf = require(altMariaDbConfFile);
-					runMariaDbSetup(altMariaDbConfFile);
-				});
-			} else {
-				mariaDbConf = require(mariaDbConfFile);
-				runMariaDbSetup(mariaDbConfFile);
-			}
-		});
-	});
-
-	// Elasticsearch
-	tasks.push(function (cb) {
-		function checkEmptyEs() {
-			const reqOptions = {};
-
-			reqOptions.url = 'http://' + esConf.clientOptions.host + '/_cat/indices?format=json';
-			reqOptions.json = true;
-
-			request(reqOptions, function (err, response, body) {
-				if (err) throw err;
-
-				if (! Array.isArray(body) || body.length !== 0) {
-					throw new Error('Database is not empty. To make a test, you must supply an empty database!');
-				}
-
-				cb(err);
-			});
-		}
-
-		fs.stat(esConfFile, function (err) {
-			const altEsConfFile = __dirname + '/../config/' + esConfFile;
-
-			if (err) {
-				log.info('Failed to find config file "' + esConfFile + '", retrying with "' + altEsConfFile + '"');
-
-				fs.stat(altEsConfFile, function (err) {
-					if (err) {
-						log.error('ES config file does not exist');
-						process.exit(1);
-					}
-
-					esConf = require(altEsConfFile);
-					checkEmptyEs(altEsConfFile);
-				});
-			} else {
-				esConf = require(esConfFile);
-				checkEmptyEs(esConfFile);
-			}
-		});
-	});
-
-	async.parallel(tasks, done);
-});
-
-after(function (done) {
-	const tasks = [];
-
-	tasks.push(function (cb) {
-		db.removeAllTables(cb);
-	});
-
-	tasks.push(function (cb) {
+	function checkEmptyEs() {
 		const reqOptions = {};
 
-		reqOptions.url = 'http://' + esConf.clientOptions.host + '/_all';
+		reqOptions.url = 'http://' + esConf.host + '/_cat/indices?format=json';
+		reqOptions.json = true;
+
+		return new Promise((resolve, reject) => {
+			request(reqOptions, function (err, response, body) {
+				if (err) return reject(err);
+
+				if (!Array.isArray(body) || body.length !== 0) {
+					return reject(new Error('Database is not empty. To make a test, you must supply an empty database!'));
+				}
+
+				resolve();
+			});
+		});
+	}
+	await checkEmptyEs();
+	*/
+});
+
+after(async () => {
+	await db.removeAllTables();
+	await db.pool.end();
+/*
+	await new Promise((resolve, reject) => {
+		const reqOptions = {};
+
+		reqOptions.url = 'http://' + esConf.host + '/_all';
 		reqOptions.json = true;
 		reqOptions.method = 'DELETE';
 
-		request(reqOptions, cb);
+		request(reqOptions, err => {
+			if (err) reject(err);
+			else resolve();
+		});
 	});
-
-	async.parallel(tasks, function (err) {
-		if (err) throw err;
-		done();
-	});
+*/
 });
 
 describe('MariaDB migrations', function () {
 	this.timeout(10000);
 	this.slow(300);
 
-	it('Run them', function (done) {
-		let dbMigrations;
-
-		mariaDbConf.migrationScriptsPath = path.join(__dirname, '../testmigrations_mariadb');
-		mariaDbConf.dbType = 'mariadb';
-		mariaDbConf.dbDriver = db;
-		mariaDbConf.log = log;
-
-		dbMigrations = new DbMigration(mariaDbConf);
-
-		dbMigrations.run(function (err) {
-			if (err) throw err;
-			done();
+	it('Run them', async () => {
+		const dbMigrations = new DbMigration({
+			migrationScriptPath: path.join(__dirname, '../testmigrations_mariadb'),
+			dbType: 'mariadb',
+			dbDriver: db,
+			log
 		});
+
+		await dbMigrations.run();
 	});
 
-	it('Should fetch some data form a migrated table', function (done) {
-		db.query('SELECT * FROM bloj', function (err, rows) {
-			if (err) throw err;
+	it('Should fetch some data form a migrated table', async () => {
+		const {rows} = await db.query('SELECT * FROM bloj');
 
-			assert.deepStrictEqual(rows.length, 1);
-			assert.deepStrictEqual(rows[0].hasse, 42);
-			done();
-		});
+		assert.deepStrictEqual(rows.length, 1);
+		assert.deepStrictEqual(rows[0].hasse, 42);
 	});
 
-	it('Make sure function works', function (done) {
-		db.query('SELECT multi_two(4) AS foo', function (err, rows) {
-			if (err) throw err;
+	it('Make sure function works', async () => {
+		const {rows} = await db.query('SELECT multi_two(4) AS foo');
 
-			assert.deepStrictEqual(rows[0].foo, 8);
-			done();
-		});
+		assert.deepStrictEqual(rows[0].foo, 8);
 	});
 
-	it('Make sure function nr 2 works', function (done) {
-		db.query('SELECT multi_three(4) AS foo', function (err, rows) {
-			if (err) throw err;
+	it('Make sure function nr 2 works', async () => {
+		const {rows} = await db.query('SELECT multi_three(4) AS foo');
 
-			assert.deepStrictEqual(rows[0].foo, 12);
-			done();
-		});
+		assert.deepStrictEqual(rows[0].foo, 12);
 	});
 
-	it('Should fail when migration returns error', function (done) {
-		const tasks = [];
-
-		// Clean out database
-		tasks.push(function (cb) {
-			db.removeAllTables(cb);
-		});
+	it('Should fail when migration returns error', async () => {
+		await db.removeAllTables();
 
 		// Run failing migrations
-		tasks.push(function (cb) {
-			let dbMigrations;
-
-			mariaDbConf.migrationScriptsPath = path.join(__dirname, '../testmigrations_mariadb_failing');
-			mariaDbConf.dbType = 'mariadb';
-			mariaDbConf.dbDriver = db;
-			mariaDbConf.log = log;
-
-			dbMigrations = new DbMigration(mariaDbConf);
-
-			dbMigrations.run(function (err) {
-				assert(err instanceof Error, 'err should be an instance of Error');
-
-				cb();
-			});
+		const dbMigrations = new DbMigration({
+			migrationScriptPath: path.join(__dirname, '../testmigrations_mariadb_failing'),
+			dbType: 'mariadb',
+			dbDriver: db,
+			log
 		});
 
-		async.series(tasks, done);
+		let thrownErr;
+
+		try {
+			await dbMigrations.run();
+		} catch (err) {
+			thrownErr = err;
+		}
+
+		assert(thrownErr instanceof Error, 'err should be an instance of Error');
+		assert.strictEqual(thrownErr.message, 'some error');
 	});
 });
 
+/*
 describe('Elasticsearch migrations', function () {
 	this.slow(300);
 
 	it('Run them', function (done) {
-		let	dbMigrations;
+		let dbMigrations;
 
 		esConf.dbType = 'elasticsearch';
 		esConf.url = 'http://' + esConf.clientOptions.host;
-		esConf.migrationScriptsPath = path.join(__dirname, '../testmigrations_elasticsearch');
+		esConf.migrationScriptPath = path.join(__dirname, '../testmigrations_elasticsearch');
 		esConf.log = log;
 
 		dbMigrations = new DbMigration(esConf);
@@ -281,18 +176,18 @@ describe('Elasticsearch migrations', function () {
 
 			if (err) throw err;
 
-			assert.strictEqual(jsonBody._source.blubb,	7);
+			assert.strictEqual(jsonBody._source.blubb, 7);
 
 			done();
 		});
 	});
 
 	it('run them again', function (done) {
-		let	dbMigrations;
+		let dbMigrations;
 
 		esConf.dbType = 'elasticsearch';
 		esConf.url = 'http://' + esConf.clientOptions.host;
-		esConf.migrationScriptsPath = path.join(__dirname, '../testmigrations_elasticsearch');
+		esConf.migrationScriptPath = path.join(__dirname, '../testmigrations_elasticsearch');
 		esConf.log = log;
 
 		dbMigrations = new DbMigration(esConf);
@@ -303,3 +198,4 @@ describe('Elasticsearch migrations', function () {
 		});
 	});
 });
+/**/

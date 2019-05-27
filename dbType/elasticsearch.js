@@ -243,7 +243,7 @@ Driver.prototype.run = function run(cb) {
 };
 
 Driver.prototype.runScripts = function runScripts(startVersion, cb) {
-	const migrationScriptsPath	= this.options.migrationScriptsPath;
+	const migrationScriptPath	= this.options.migrationScriptPath;
 	const indexName = this.options.indexName;
 	const logPrefix = topLogPrefix + 'runScripts() - indexName: "' + this.options.indexName + '" - ';
 	const tasks = [];
@@ -252,11 +252,11 @@ Driver.prototype.runScripts = function runScripts(startVersion, cb) {
 
 	let scriptFound = false;
 
-	that.log.verbose(logPrefix + 'Started with startVersion: "' + startVersion + '" in path: "' + migrationScriptsPath + '" on options.url: ' + that.options.url);
+	that.log.verbose(logPrefix + 'Started with startVersion: "' + startVersion + '" in path: "' + migrationScriptPath + '" on options.url: ' + that.options.url);
 
 	// Update db_version status
 	tasks.push(function (cb) {
-		if (fs.existsSync(migrationScriptsPath + '/' + startVersion + '.js')) {
+		if (fs.existsSync(migrationScriptPath + '/' + startVersion + '.js')) {
 			that.log.info(logPrefix + 'Found js migration script #' + startVersion + ', running it now.');
 
 			scriptFound = true;
@@ -287,11 +287,11 @@ Driver.prototype.runScripts = function runScripts(startVersion, cb) {
 	tasks.push(function (cb) {
 		if (scriptFound === true) {
 			try {
-				require(migrationScriptsPath + '/' + startVersion + '.js').apply(that, [function (err) {
+				require(migrationScriptPath + '/' + startVersion + '.js').apply(that, [function (err) {
 					if (err) {
 						const scriptErr = err;
 
-						that.log.error(logPrefix + 'Got error running migration script ' + migrationScriptsPath + '/' + startVersion + '.js' + ': ' + err.message);
+						that.log.error(logPrefix + 'Got error running migration script ' + migrationScriptPath + '/' + startVersion + '.js' + ': ' + err.message);
 
 						request.put({'url': uri, 'json': {'version': startVersion, 'status': 'failed'}}, function (err, response) {
 							if (err) {
@@ -331,7 +331,7 @@ Driver.prototype.runScripts = function runScripts(startVersion, cb) {
 							return cb(err);
 						}
 
-						if (fs.existsSync(migrationScriptsPath + '/' + (startVersion + 1) + '.js')) {
+						if (fs.existsSync(migrationScriptPath + '/' + (startVersion + 1) + '.js')) {
 							that.runScripts(parseInt(startVersion) + 1, cb);
 						} else {
 							return cb();
