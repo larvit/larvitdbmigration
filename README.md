@@ -33,10 +33,10 @@ In your application startup script, do something like this:
 const DbMigration = require('larvitdbmigration');
 const Db = require('larvitdb');
 const dbDriver = new Db({
-	'host': '127.0.0.1',
-	'user': 'foo',
-	'password': 'bar',
-	'database': 'baz'
+	host: '127.0.0.1',
+	user: 'foo',
+	password: 'bar',
+	database: 'baz'
 });
 const dbMigration = new DbMigration({
 	dbType: 'mariadb',
