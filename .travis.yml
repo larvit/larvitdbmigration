@@ -24,11 +24,15 @@ install:
   - npm i
 
 env:
-  - DB=postgres
-  - SH=bash
-  - PACKAGE_VERSION="1.0.*"
+  - DB_HOST=127.0.0.1
+  - DB_USER=root
+  - DB_PORT=3306
+  - DB_PASSWORD=
+  - DB_DATABASE=test
+  - ES_HOST=127.0.0.1:9200
+  - ES_LOG=trace
 
-script: ESCONFFILE=es_travis.json DBCONFFILE=db_travis.json npm test
+script: npm test
 
 addons:
   mariadb: '10.3'

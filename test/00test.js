@@ -7,24 +7,24 @@ const request = require('request');
 const assert = require('assert');
 const Lutils = require('larvitutils');
 const lutils = new Lutils();
-const async = require('async');
 const path = require('path');
 const log = new lutils.Log('error');
 const Db = require('larvitdb');
-
-let mariaDbConf;
-let esConf;
+const esConf = {
+	host: process.env.ES_HOST !== undefined ? process.env.ES_HOST : '127.0.0.1:9200'
+};
 let db;
 
 before(async () => {
 	// Setup MariaDB
 	const mariaConf = {
-		host: process.env.DB_HOST || '127.0.0.1',
-		user: process.env.DB_USER || 'root',
-		port: process.env.DB_PORT || '3306',
-		password: process.env.DB_PASSWORD || 'toor',
-		database: process.env.DB_DATABASE || 'test'
+		host: process.env.DB_HOST !== undefined ? process.env.DB_HOST : '127.0.0.1',
+		user: process.env.DB_USER !== undefined ? process.env.DB_USER : 'root',
+		port: process.env.DB_PORT !== undefined ? process.env.DB_PORT : '3306',
+		password: process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : 'toor',
+		database: process.env.DB_DATABASE !== undefined ? process.env.DB_DATABASE : 'test'
 	};
+	log.debug('mariaConf: ' + JSON.stringify(mariaConf));
 	db = new Db(mariaConf);
 	const {rows} = await db.query('SHOW TABLES');
 
@@ -32,11 +32,9 @@ before(async () => {
 		log.error('Database is not empty. To make a test, you must supply an empty database!');
 		process.exit(1);
 	}
-/*
+
 	// Setup ES
-	const esConf = {
-		host: process.env.ES_HOST || '127.0.0.1:9300'
-	};
+	log.debug('esConf: ' + JSON.stringify(esConf));
 
 	function checkEmptyEs() {
 		const reqOptions = {};
@@ -46,10 +44,14 @@ before(async () => {
 
 		return new Promise((resolve, reject) => {
 			request(reqOptions, function (err, response, body) {
-				if (err) return reject(err);
+				if (err) {
+					log.error('Error talking to Elasticsearch, err: ' + err.message);
+
+					return reject(err);
+				}
 
 				if (!Array.isArray(body) || body.length !== 0) {
-					return reject(new Error('Database is not empty. To make a test, you must supply an empty database!'));
+					return reject(new Error('Elasticsearch is not empty. To make a test, you must supply an empty database!'));
 				}
 
 				resolve();
@@ -57,13 +59,12 @@ before(async () => {
 		});
 	}
 	await checkEmptyEs();
-	*/
 });
 
 after(async () => {
 	await db.removeAllTables();
 	await db.pool.end();
-/*
+
 	await new Promise((resolve, reject) => {
 		const reqOptions = {};
 
@@ -76,7 +77,6 @@ after(async () => {
 			else resolve();
 		});
 	});
-*/
 });
 
 describe('MariaDB migrations', function () {
@@ -137,28 +137,23 @@ describe('MariaDB migrations', function () {
 	});
 });
 
-/*
 describe('Elasticsearch migrations', function () {
 	this.slow(300);
 
-	it('Run them', function (done) {
+	it('Run them', async () => {
 		let dbMigrations;
 
 		esConf.dbType = 'elasticsearch';
-		esConf.url = 'http://' + esConf.clientOptions.host;
+		esConf.url = 'http://' + esConf.host;
 		esConf.migrationScriptPath = path.join(__dirname, '../testmigrations_elasticsearch');
 		esConf.log = log;
 
 		dbMigrations = new DbMigration(esConf);
-
-		dbMigrations.run(function (err) {
-			if (err) throw err;
-			done();
-		});
+		await dbMigrations.run();
 	});
 
 	it('should check the db_versions index', function (done) {
-		request('http://' + esConf.clientOptions.host + '/db_version/db_version/1', function (err, response, body) {
+		request('http://' + esConf.host + '/db_version/db_version/1', function (err, response, body) {
 			const jsonBody = JSON.parse(body);
 
 			if (err) throw err;
@@ -171,7 +166,7 @@ describe('Elasticsearch migrations', function () {
 	});
 
 	it('should check the foo index', function (done) {
-		request('http://' + esConf.clientOptions.host + '/foo/bar/666', function (err, response, body) {
+		request('http://' + esConf.host + '/foo/bar/666', function (err, response, body) {
 			const jsonBody = JSON.parse(body);
 
 			if (err) throw err;
@@ -182,20 +177,13 @@ describe('Elasticsearch migrations', function () {
 		});
 	});
 
-	it('run them again', function (done) {
-		let dbMigrations;
-
+	it('run them again', async () => {
 		esConf.dbType = 'elasticsearch';
-		esConf.url = 'http://' + esConf.clientOptions.host;
+		esConf.url = 'http://' + esConf.host;
 		esConf.migrationScriptPath = path.join(__dirname, '../testmigrations_elasticsearch');
 		esConf.log = log;
 
-		dbMigrations = new DbMigration(esConf);
-
-		dbMigrations.run(function (err) {
-			if (err) throw err;
-			done();
-		});
+		const dbMigrations = new DbMigration(esConf);
+		await dbMigrations.run();
 	});
 });
-/**/

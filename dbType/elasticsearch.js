@@ -5,69 +5,77 @@ const request = require('request');
 const async = require('async');
 const fs = require('fs');
 
+/**
+ * Initiate driver
+ *
+ * @param {object} options -
+ * @param {object} options.log -
+ * @param {String} options.indexName -
+ * @param {String} options.url - ES Url
+ * @param {String} options.tableName -
+ * @param {String} options.migrationScriptPath -
+ */
 function Driver(options) {
-	const that = this;
+	for (const option of ['log', 'indexName', 'url', 'tableName', 'migrationScriptPath']) {
+		if (!options[option]) {
+			throw new Error('Missing required option "' + option + '"');
+		}
 
-	that.options = options || {};
-
-	if (! that.options.indexName) {
-		throw new Error('Missing required option "indexName"');
+		this[option] = options[option];
 	}
 }
 
 Driver.prototype.getLock = function getLock(retries, cb) {
-	const logPrefix = topLogPrefix + 'getLock() - indexName: "' + this.options.indexName + '" - ';
-	const that = this;
+	const {indexName, log, url} = this;
+	const logPrefix = topLogPrefix + 'getLock() - indexName: "' + indexName + '" - ';
 
 	if (typeof retries === 'function') {
 		cb = retries;
 		retries = 0;
 	}
 
-	that.log.debug(logPrefix + 'Started');
+	log.debug(logPrefix + 'Started');
 
 	// Source: https://www.elastic.co/guide/en/elasticsearch/guide/current/concurrency-solutions.html
 	request({
-		'method': 'PUT',
-		'uri': that.options.url + '/fs/lock/global/_create',
-		'json': true,
-		'body': {}
-	}, function (err, response) {
+		method: 'PUT',
+		uri: url + '/fs/lock/global/_create',
+		json: true,
+		body: {}
+	}, (err, response) => {
 		if (err) {
-			that.log.error(logPrefix + 'Can not get lock on ' + that.options.url + '/fs/lock/global/_create');
+			log.error(logPrefix + 'Can not get lock on ' + url + '/fs/lock/global/_create');
 
 			return cb(err);
 		}
 
 		if (response.statusCode !== 201) {
 			if (retries < 100) {
-				that.log.info(logPrefix + 'Another process is running the migrations, retry nr: ' + retries + ', wait and try again soon. StatusCode: ' + response.statusCode);
+				log.info(logPrefix + 'Another process is running the migrations, retry nr: ' + retries + ', wait and try again soon. StatusCode: ' + response.statusCode);
 			} else {
-				that.log.warn(logPrefix + 'Another process is running the migrations, retry nr: ' + retries + ', wait and try again soon. StatusCode: ' + response.statusCode);
+				log.warn(logPrefix + 'Another process is running the migrations, retry nr: ' + retries + ', wait and try again soon. StatusCode: ' + response.statusCode);
 			}
 
-			setTimeout(function () {
-				that.getLock(retries + 1, cb);
-			}, 500);
+			setTimeout(() => this.getLock(retries + 1, cb), 500);
 
 			return;
 		}
 
-		that.log.verbose(logPrefix + 'Locked!');
+		log.verbose(logPrefix + 'Locked!');
 
 		cb();
 	});
 };
 
 Driver.prototype.rmLock = function rmLock(cb) {
-	const logPrefix = topLogPrefix + 'rmLock() - indexName: "' + this.options.indexName + '" - ';
-	const that = this;
+	const {indexName, log, url} = this;
+	const logPrefix = topLogPrefix + 'rmLock() - indexName: "' + indexName + '" - ';
 
-	that.log.debug(logPrefix + 'Started');
+	log.debug(logPrefix + 'Started');
 
-	request.delete(that.options.url + '/fs/lock/global', function (err, response) {
+	request.delete(url + '/fs/lock/global', (err, response) => {
 		if (err) {
-			that.log.error(logPrefix + 'Can not clear lock on ' + that.options.url + '/fs/lock/global');
+			log.error(logPrefix + 'Can not clear lock on ' + url + '/fs/lock/global');
 
 			return cb(err);
 		}
@@ -75,47 +83,50 @@ Driver.prototype.rmLock = function rmLock(cb) {
 		if (response.statusCode !== 200) {
 			const err = new Error('Lock could not be removed. StatusCode: ' + response.statusCode);
 
-			that.log.warn(logPrefix + err.message);
+			log.warn(logPrefix + err.message);
 
 			return cb(err);
 		}
 
-		that.log.verbose(logPrefix + 'Unlocked!');
-
+		log.verbose(logPrefix + 'Unlocked!');
 		cb();
 	});
 };
 
-Driver.prototype.run = function run(cb) {
-	const logPrefix = topLogPrefix + 'run() - indexName: "' + this.options.tableName + '" - ';
-	const indexName = this.options.indexName;
+/**
+ * Run the migrations
+ *
+ * @return {promise} -
+ */
+Driver.prototype.run = function run() {
+	const {indexName, tableName, log, url} = this;
+	const logPrefix = topLogPrefix + 'run() - indexName: "' + tableName + '" - ';
 	const tasks = [];
-	const that = this;
 
 	let curDoc;
 
-	that.log.debug(logPrefix + 'Started');
+	log.debug(logPrefix + 'Started');
 
 	function getDoc(cb) {
 		const subLogPrefix = logPrefix + 'getDoc() - ';
-		const uri = that.options.url + '/' + indexName + '/' + indexName + '/1';
+		const uri = url + '/' + indexName + '/' + indexName + '/1';
 
-		that.log.debug(subLogPrefix + 'Running for ' + uri);
+		log.debug(subLogPrefix + 'Running for ' + uri);
 
 		request(uri, function (err, response, body) {
 			if (err) {
-				that.log.error(subLogPrefix + 'GET ' + uri + ' failed, err: ' + err.message);
+				log.error(subLogPrefix + 'GET ' + uri + ' failed, err: ' + err.message);
 
 				return cb(err);
 			}
 
-			that.log.debug(subLogPrefix + 'GET ' + uri + ' ' + response.statusCode + ' ' + response.statusMessage);
+			log.debug(subLogPrefix + 'GET ' + uri + ' ' + response.statusCode + ' ' + response.statusMessage);
 
 			if (response.statusCode === 200) {
 				try {
 					curDoc = JSON.parse(body);
 				} catch (err) {
-					that.log.error(subLogPrefix + 'GET ' + uri + ' invalid JSON in body, err: ' + err.message + ' string: "' + body + '"');
+					log.error(subLogPrefix + 'GET ' + uri + ' invalid JSON in body, err: ' + err.message + ' string: "' + body + '"');
 					cb(err);
 				}
 
@@ -127,42 +138,40 @@ Driver.prototype.run = function run(cb) {
 	}
 
 	// Get lock
-	tasks.push(function (cb) {
-		that.getLock(cb);
-	});
+	tasks.push(cb => this.getLock(cb));
 
 	// Create index if it does not exist
-	tasks.push(function (cb) {
-		const subLogPrefix	= logPrefix + 'indexName: "' + indexName + '" - ';
-		const uri = that.options.url + '/' + indexName;
+	tasks.push(cb => {
+		const subLogPrefix = logPrefix + 'indexName: "' + indexName + '" - ';
+		const uri = url + '/' + indexName;
 
-		that.log.debug(subLogPrefix + 'Crating index if it did not exist');
+		log.debug(subLogPrefix + 'Crating index if it did not exist');
 
-		request.head(uri, function (err, response) {
+		request.head(uri, (err, response) => {
 			if (err) {
-				that.log.error(subLogPrefix + 'HEAD ' + uri + ' failed, err: ' + err.message);
+				log.error(subLogPrefix + 'HEAD ' + uri + ' failed, err: ' + err.message);
 
 				return cb(err);
 			}
 
 			if (response.statusCode === 200) {
-				that.log.debug(subLogPrefix + 'Index already exists');
+				log.debug(subLogPrefix + 'Index already exists');
 
 				return cb();
 			} else if (response.statusCode !== 404) {
 				const err = new Error('HEAD ' + uri + ' unexpected statusCode: ' + response.statusCode);
 
-				that.log.error(subLogPrefix + err.message);
+				log.error(subLogPrefix + err.message);
 
 				return cb(err);
 			}
 
-			that.log.debug(subLogPrefix + 'Index does not exist, create it');
+			log.debug(subLogPrefix + 'Index does not exist, create it');
 
 			// If we arrive here its a 404 - create it!
 			request.put(uri, function (err, response) {
 				if (err) {
-					that.log.error(subLogPrefix + 'PUT ' + uri + ' failed, err: ' + err.message);
+					log.error(subLogPrefix + 'PUT ' + uri + ' failed, err: ' + err.message);
 
 					return cb(err);
 				}
@@ -170,12 +179,12 @@ Driver.prototype.run = function run(cb) {
 				if (response.statusCode !== 200) {
 					const err = new Error('PUT ' + uri + ', Unexpected statusCode: ' + response.statusCode);
 
-					that.log.error(subLogPrefix + err.message);
+					log.error(subLogPrefix + err.message);
 
 					return cb(err);
 				}
 
-				that.log.debug(subLogPrefix + 'Created!');
+				log.debug(subLogPrefix + 'Created!');
 
 				cb();
 			});
@@ -183,18 +192,18 @@ Driver.prototype.run = function run(cb) {
 	});
 
 	// Create document if it does not exist and get current document
-	tasks.push(function (cb) {
-		const uri = that.options.url + '/' + indexName + '/' + indexName + '/1';
+	tasks.push(cb => {
+		const uri = url + '/' + indexName + '/' + indexName + '/1';
 
-		getDoc(function (err, response) {
+		getDoc((err, response) => {
 			if (err) return cb(err);
 
 			if (response.statusCode === 404) {
-				that.log.debug(logPrefix + 'Create database version document');
+				log.debug(logPrefix + 'Create database version document');
 
-				request.put({'url': uri, 'json': {'version': 0, 'status': 'finnished'}}, function (err, response) {
+				request.put({url: uri, json: {version: 0, status: 'finnished'}}, (err, response) => {
 					if (err) {
-						that.log.error(logPrefix + 'PUT ' + uri + ' failed, err: ' + err.message);
+						log.error(logPrefix + 'PUT ' + uri + ' failed, err: ' + err.message);
 
 						return cb(err);
 					}
@@ -202,22 +211,22 @@ Driver.prototype.run = function run(cb) {
 					if (response.statusCode !== 201) {
 						const err = new Error('Failed to create document, statusCode: ' + response.statusCode);
 
-						that.log.error(logPrefix + err.message);
+						log.error(logPrefix + err.message);
 
 						return cb(err);
 					}
 
-					that.log.verbose(logPrefix + 'Database version document created');
+					log.verbose(logPrefix + 'Database version document created');
 
 					getDoc(cb);
 				});
 			} else if (response.statusCode === 200) {
-				that.log.debug(logPrefix + 'Database version document already exists');
+				log.debug(logPrefix + 'Database version document already exists');
 				cb();
 			} else {
 				const err = new Error('Unexpected statusCode when getting database version document: ' + response.statusCode);
 
-				that.log.error(logPrefix + err.message);
+				log.error(logPrefix + err.message);
 
 				return cb(err);
 			}
@@ -225,45 +234,48 @@ Driver.prototype.run = function run(cb) {
 	});
 
 	// Run scripts
-	tasks.push(function (cb) {
+	tasks.push(cb => {
 		try {
-			that.runScripts(curDoc._source.version + 1, cb);
+			this.runScripts(curDoc._source.version + 1, cb);
 		} catch (err) {
-			that.log.error(logPrefix + 'Error from driver: ' + err.message);
+			log.error(logPrefix + 'Error from driver: ' + err.message);
 			cb(err);
 		}
 	});
 
 	// Remove lock
-	tasks.push(function (cb) {
-		that.rmLock(cb);
+	tasks.push(cb => {
+		this.rmLock(cb);
 	});
 
-	async.series(tasks, cb);
+	return new Promise((resolve, reject) => {
+		async.series(tasks, err => {
+			if (err) reject(err);
+			else resolve();
+		});
+	});
 };
 
 Driver.prototype.runScripts = function runScripts(startVersion, cb) {
-	const migrationScriptPath	= this.options.migrationScriptPath;
-	const indexName = this.options.indexName;
-	const logPrefix = topLogPrefix + 'runScripts() - indexName: "' + this.options.indexName + '" - ';
+	const {migrationScriptPath, log, indexName, url} = this;
+	const logPrefix = topLogPrefix + 'runScripts() - indexName: "' + indexName + '" - ';
 	const tasks = [];
-	const that = this;
-	const uri = that.options.url + '/' + indexName + '/' + indexName + '/1';
+	const uri = url + '/' + indexName + '/' + indexName + '/1';
 
 	let scriptFound = false;
 
-	that.log.verbose(logPrefix + 'Started with startVersion: "' + startVersion + '" in path: "' + migrationScriptPath + '" on options.url: ' + that.options.url);
+	log.verbose(logPrefix + 'Started with startVersion: "' + startVersion + '" in path: "' + migrationScriptPath + '" on url: ' + url);
 
 	// Update db_version status
-	tasks.push(function (cb) {
+	tasks.push(cb => {
 		if (fs.existsSync(migrationScriptPath + '/' + startVersion + '.js')) {
-			that.log.info(logPrefix + 'Found js migration script #' + startVersion + ', running it now.');
+			log.info(logPrefix + 'Found js migration script #' + startVersion + ', running it now.');
 
 			scriptFound = true;
 
-			request.put({'url': uri, 'json': {'version': startVersion, 'status': 'started'}}, function (err, response) {
+			request.put({url: uri, json: {version: startVersion, status: 'started'}}, (err, response) => {
 				if (err) {
-					that.log.error(logPrefix + 'PUT ' + uri + ' failed, err: ' + err.message);
+					log.error(logPrefix + 'PUT ' + uri + ' failed, err: ' + err.message);
 
 					return cb(err);
 				}
@@ -271,7 +283,7 @@ Driver.prototype.runScripts = function runScripts(startVersion, cb) {
 				if (response.statusCode !== 200) {
 					const err = new Error('PUT ' + uri + ' statusCode: ' + response.statusCode);
 
-					that.log.error(logPrefix + err.message);
+					log.error(logPrefix + err.message);
 
 					return cb(err);
 				}
@@ -284,74 +296,76 @@ Driver.prototype.runScripts = function runScripts(startVersion, cb) {
 	});
 
 	// Run the script
-	tasks.push(function (cb) {
-		if (scriptFound === true) {
-			try {
-				require(migrationScriptPath + '/' + startVersion + '.js').apply(that, [function (err) {
+	tasks.push(async () => {
+		if (!scriptFound) return;
+
+		const migration = require(migrationScriptPath + '/' + startVersion + '.js');
+		try {
+			await migration(this);
+		} catch (err) {
+			const scriptErr = err;
+
+			log.error(logPrefix + 'Got error running migration script ' + migrationScriptPath + '/' + startVersion + '.js' + ': ' + err.message);
+
+			// Write about the failure in the database
+			await new Promise((resolve, reject) => {
+				request.put({url: uri, json: {version: startVersion, status: 'failed'}}, (err, response) => {
 					if (err) {
-						const scriptErr = err;
+						log.error(logPrefix + 'PUT ' + uri + ' failed, err: ' + err.message);
 
-						that.log.error(logPrefix + 'Got error running migration script ' + migrationScriptPath + '/' + startVersion + '.js' + ': ' + err.message);
-
-						request.put({'url': uri, 'json': {'version': startVersion, 'status': 'failed'}}, function (err, response) {
-							if (err) {
-								that.log.error(logPrefix + 'PUT ' + uri + ' failed, err: ' + err.message);
-
-								return cb(err);
-							}
-
-							if (response.statusCode !== 200) {
-								const err = new Error('PUT ' + uri + ' statusCode: ' + response.statusCode);
-
-								that.log.error(logPrefix + err.message);
-
-								return cb(err);
-							}
-
-							return cb(scriptErr);
-						});
-
-						return;
+						return reject(err);
 					}
 
-					that.log.debug(logPrefix + 'Js migration script #' + startVersion + ' ran. Updating database version and moving on.');
+					if (response.statusCode !== 200) {
+						const err = new Error('PUT ' + uri + ' statusCode: ' + response.statusCode);
 
-					request.put({'url': uri, 'json': {'version': startVersion, 'status': 'finnished'}}, function (err, response) {
-						if (err) {
-							that.log.error(logPrefix + 'PUT ' + uri + ' failed, err: ' + err.message);
+						log.error(logPrefix + err.message);
 
-							return cb(err);
-						}
+						return reject(err);
+					}
 
-						if (response.statusCode !== 200) {
-							const err = new Error('PUT ' + uri + ' statusCode: ' + response.statusCode);
+					return resolve(scriptErr);
+				});
+			});
 
-							that.log.error(logPrefix + err.message);
-
-							return cb(err);
-						}
-
-						if (fs.existsSync(migrationScriptPath + '/' + (startVersion + 1) + '.js')) {
-							that.runScripts(parseInt(startVersion) + 1, cb);
-						} else {
-							return cb();
-						}
-					});
-				}]);
-			} catch (err) {
-				that.log.error(logPrefix + 'Uncaught error: ' + err.message);
-
-				return cb(err);
-			}
-		} else {
-			return cb();
+			// Now we've saved the failure in the database, throw back the script error
+			throw scriptErr;
 		}
+
+		log.debug(logPrefix + 'Js migration script #' + startVersion + ' ran. Updating database version and moving on.');
+
+		await new Promise((resolve, reject) => {
+			request.put({url: uri, json: {version: startVersion, status: 'finnished'}}, (err, response) => {
+				if (err) {
+					log.error(logPrefix + 'PUT ' + uri + ' failed, err: ' + err.message);
+
+					return reject(err);
+				}
+
+				if (response.statusCode !== 200) {
+					const err = new Error('PUT ' + uri + ' statusCode: ' + response.statusCode);
+
+					log.error(logPrefix + err.message);
+
+					return reject(err);
+				}
+
+				if (fs.existsSync(migrationScriptPath + '/' + (startVersion + 1) + '.js')) {
+					this.runScripts(parseInt(startVersion) + 1, err => {
+						if (err) reject(err);
+						else resolve();
+					});
+				} else {
+					return resolve();
+				}
+			});
+		});
 	});
 
-	async.series(tasks, function (err) {
+	async.series(tasks, err => {
 		if (err) return cb(err);
 
-		that.log.info(logPrefix + 'Database migrated and done. Final version is ' + (startVersion - 1));
+		log.info(logPrefix + 'Database migrated and done. Final version is ' + (startVersion - 1));
 
 		// If we end up here, it means there are no more migration scripts to run
 		cb();
