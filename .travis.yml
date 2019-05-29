@@ -1,9 +1,6 @@
 language: node_js
 sudo: true
 
-env:
-  - CXX=g++-4.8
-
 node_js:
   - 8
   - 10
@@ -23,7 +20,7 @@ install:
   - npm i
 
 env:
-  - DB_HOST=127.0.0.1 DB_USER=root DB_PORT=3306 DB_PASSWORD= DB_DATABASE=test ES_HOST=127.0.0.1:9200
+  - CXX=g++-4.8 DB_HOST=127.0.0.1 DB_USER=root DB_PORT=3306 DB_PASSWORD= DB_DATABASE=test ES_HOST=127.0.0.1:9200
 
 script: npm test
 
@@ -34,7 +31,7 @@ addons:
     - ubuntu-toolchain-r-test
     packages:
     - g++-4.8
-    - oracle-java8-set-default
+    - openjdk-8-jre-headless
 
 before_script:
   - mysql -e "create database IF NOT EXISTS test;" -uroot
