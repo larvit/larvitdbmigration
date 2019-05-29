@@ -48,10 +48,7 @@ function DbMigration(options) {
 	this.options = options;
 
 	// Set functions from the driver
-	this.getLock = () => this.dbType.getLock.apply(this.dbType, arguments);
-	this.rmLock = () => this.dbType.rmLock.apply(this.dbType, arguments);
 	this.run = () => this.dbType.run.apply(this.dbType, arguments);
-	this.runScripts = () => this.dbType.runScripts.apply(this.dbType, arguments);
 }
 
 exports = module.exports = DbMigration;
