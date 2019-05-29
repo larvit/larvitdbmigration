@@ -24,7 +24,8 @@ function Driver(options) {
 }
 
 Driver.prototype.getLock = async function getLock() {
-	const {tableName, log, lUtils} = this.options;
+	const {tableName, log} = this.options;
+	const lUtils = this.lUtils;
 	const logPrefix = topLogPrefix + 'getLock() - tableName: "' + tableName + '" - ';
 	const db = this.options.dbDriver;
 
