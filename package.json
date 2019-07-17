@@ -19,7 +19,7 @@
     "coveralls": "3.0.5",
     "dotenv": "8.0.0",
     "eslint": "5.16.0",
-    "larvitdb": "3.0.2",
+    "larvitdb": "3.0.3",
     "mocha": "6.1.4",
     "mocha-eslint": "5.0.0",
     "mysql2": "1.6.5",
