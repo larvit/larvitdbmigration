@@ -16,7 +16,7 @@
   },
   "description": "node.js database migration tool",
   "devDependencies": {
-    "coveralls": "3.0.6",
+    "coveralls": "3.0.7",
     "dotenv": "8.0.0",
     "eslint": "5.16.0",
     "larvitdb": "3.1.0",
