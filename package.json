@@ -23,7 +23,7 @@
     "mocha": "6.2.2",
     "mocha-eslint": "5.0.0",
     "mysql2": "1.7.0",
-    "nyc": "14.1.1"
+    "nyc": "15.1.0"
   },
   "keywords": [
     "db",
