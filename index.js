@@ -1,8 +1,8 @@
 'use strict';
 
 const topLogPrefix = 'larvitdbmigration: index.js - ';
-const LUtils = require('larvitutils');
-const lUtils = new LUtils();
+const { Utils } = require('larvitutils');
+const lUtils = new Utils();
 
 /**
  * Module main constructor

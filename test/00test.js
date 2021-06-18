@@ -5,8 +5,8 @@ require('dotenv').config();
 const DbMigration = require(__dirname + '/../index.js');
 const request = require('request');
 const assert = require('assert');
-const Lutils = require('larvitutils');
-const lutils = new Lutils();
+const { Utils } = require('larvitutils');
+const lutils = new Utils();
 const path = require('path');
 const log = new lutils.Log('error');
 const Db = require('larvitdb');
@@ -153,7 +153,7 @@ describe('Elasticsearch migrations', function () {
 	});
 
 	it('should check the db_versions index', function (done) {
-		request('http://' + esConf.host + '/db_version/db_version/1', function (err, response, body) {
+		request('http://' + esConf.host + '/db_version/_doc/1', function (err, response, body) {
 			const jsonBody = JSON.parse(body);
 
 			if (err) throw err;
@@ -166,7 +166,7 @@ describe('Elasticsearch migrations', function () {
 	});
 
 	it('should check the foo index', function (done) {
-		request('http://' + esConf.host + '/foo/bar/666', function (err, response, body) {
+		request('http://' + esConf.host + '/foo/_doc/666', function (err, response, body) {
 			const jsonBody = JSON.parse(body);
 
 			if (err) throw err;

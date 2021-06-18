@@ -1,7 +1,7 @@
 'use strict';
 
 const topLogPrefix = 'larvitdbmigration: dbType/mariadb.js: ';
-const LUtils = require('larvitutils');
+const { Utils } = require('larvitutils');
 const mysql = require('mysql2');
 const fs = require('fs');
 
@@ -19,7 +19,7 @@ function Driver(options) {
 	if (!options.dbDriver) throw new Error('Missing option dbDriver');
 	if (!options.log) throw new Error('Missing option log');
 
-	this.lUtils = new LUtils({log: options.log});
+	this.lUtils = new Utils({log: options.log});
 	this.options = options;
 }
 
