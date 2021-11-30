@@ -1,6 +1,9 @@
 .env
+.nycrc
 .nyc_output/
+.vscode/
 config/db_test.json
 config/es_test.json
 coverage
 node_modules
+dist

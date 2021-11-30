@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/larvit/larvitdbmigration.svg?branch=master)](https://travis-ci.org/larvit/larvitdbmigration) [![Dependencies](https://david-dm.org/larvit/larvitdbmigration.svg)](https://david-dm.org/larvit/larvitdbmigration.svg) [![Coverage Status](https://coveralls.io/repos/github/larvit/larvitdbmigration/badge.svg)](https://coveralls.io/github/larvit/larvitdbmigration)
+[![Build Status](https://travis-ci.org/larvit/larvitdbmigration.svg?branch=master)](https://travis-ci.org/larvit/larvitdbmigration) [![Dependencies](https://david-dm.org/larvit/larvitdbmigration.svg)](https://david-dm.org/larvit/larvitdbmigration.svg)
 
 # Database migration tool
 
@@ -64,7 +64,8 @@ const dbMigration = new DbMigration({
 	url: 'http://127.0.0.1:9200',
 	indexName: 'db_version', // Optional
 	migrationScriptPath: './dbmigration', // Optional
-	log// Optional, will use log.silly(), log.debug(), log.verbose(), log.info(), log.warn() and log.error() if given.
+	got // Optional, will use default got instance if not specified.
+	log // Optional, will use log.silly(), log.debug(), log.verbose(), log.info(), log.warn() and log.error() if given.
 });
 
 dbMigration.run().then(() => {
@@ -73,6 +74,8 @@ dbMigration.run().then(() => {
 	throw err;
 });
 ```
+
+Retry behavior can be configured in the got instance that is passed to the constructor.
 
 ### Example migration scripts
 
@@ -106,29 +109,22 @@ Create the file process.cwd()/migrationScriptPath/1.js with this content:
 ```javascript
 'use strict';
 
-const request = require('request');
+const got = require('got');
 
-exports = module.exports = function (options) {
-	const {url} = options;
+exports = module.exports = async function (options) {
+	const {url, log} = options;
 
-	// Return a promise instead of having the function async, see async example above
-	return new Promise((resolve, reject) => {
-		request({
-			url: url + '/some_index/_mapping/some_type',
-			json: true,
-			method: 'PUT',
-			body: {
-				properties: {
-					names: {
-						type: 'string',
-						position_increment_gap: 100
-					}
+	log.info('Some script-specific logging');
+
+	await got.put(`${url}/some_index/_mapping`, {
+		json: {
+			properties: {
+				names: {
+					type: 'string',
+					position_increment_gap: 100
 				}
 			}
-		}, err => {
-			if (err) reject(err);
-			else resolve();
-		});
+		}
 	});
 };
 ```
@@ -146,3 +142,10 @@ ALTER TABLE bloj CHANGE nisse hasse int(11);
 #### Summary
 
 Tadaaa! Now this gets done once and the version will be bumped to 1. If you then create a script named "2.js" or "2.sql" you might guess what happends. :)
+
+## Changelog
+### 6.0.0
+* Removed locking mechanism for Elasticsearch migrations, there is no support for it in Elasticsearch.
+* Rewrote library in TypeScript.
+* Updated all dependencies to latest version (and replaced request with got).
+* The Elasticsearch driver now only sends url and log instance to the running migration script (instead of the driver instance as it were before).
