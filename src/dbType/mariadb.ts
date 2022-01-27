@@ -7,6 +7,7 @@ const topLogPrefix = 'larvitdbmigration: dbType/mariadb.js: ';
 export type MariaDbDriverOptions = {
 	tableName: string,
 	dbDriver: any,
+	context?: object,
 	migrationScriptPath: string,
 	log: LogInstance
 };
@@ -104,7 +105,7 @@ export default class MariaDbDriver {
 	}
 
 	async runScripts(startVersion: number): Promise<void> {
-		const { tableName, log, migrationScriptPath } = this.options;
+		const { tableName, log, migrationScriptPath, context } = this.options;
 		const logPrefix = topLogPrefix + 'runScripts() - tableName: "' + tableName + '" - ';
 		const db = this.options.dbDriver;
 
@@ -131,7 +132,7 @@ export default class MariaDbDriver {
 				// eslint-disable-next-line @typescript-eslint/no-var-requires
 				const migrationScript = require(migrationScriptPath + '/' + startVersion + '.js');
 
-				await migrationScript({ db, log });
+				await migrationScript({ db, log, context });
 				log.debug(logPrefix + 'Js migration script #' + startVersion + ' ran. Updating database version and moving on.');
 				await db.query('UPDATE `' + tableName + '` SET version = ' + startVersion + ';');
 				await this.runScripts(startVersion + 1);

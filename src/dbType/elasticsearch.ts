@@ -8,6 +8,7 @@ export type ElasticsearchDriverOptions = {
 	url: string,
 	got: Got,
 	indexName: string,
+	context?: object,
 	log: LogInstance
 	migrationScriptPath: string,
 };
@@ -208,7 +209,7 @@ export default class ElasticsearchDriver {
 	}
 
 	private async runScript(version: number): Promise<void> {
-		const { migrationScriptPath, log, url } = this.options;
+		const { migrationScriptPath, log, url, context } = this.options;
 		const logPrefix = `${topLogPrefix} runScript() - scriptPath: ${migrationScriptPath}, version: ${version} -`;
 
 		log.verbose(`${logPrefix} Running script`);
@@ -216,7 +217,7 @@ export default class ElasticsearchDriver {
 		// eslint-disable-next-line @typescript-eslint/no-var-requires
 		const migration = require(migrationScriptPath + '/' + version + '.js');
 		try {
-			await migration({ url, log });
+			await migration({ url, log, context });
 		} catch (_scriptErr) {
 			const scriptErr = _scriptErr as Error;
 			const errMsg = `Error when running migration script ${migrationScriptPath}/${version}.js: ${scriptErr.message}`;

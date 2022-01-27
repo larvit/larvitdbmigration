@@ -113,6 +113,9 @@ describe('MariaDB migrations', function () {
 			dbType: 'mariadb',
 			dbDriver: db,
 			log,
+			context: {
+				migration2Value: 42,
+			},
 		});
 
 		await dbMigrations.run();
@@ -173,6 +176,9 @@ describe('Elasticsearch migrations', () => {
 			migrationScriptPath: options.migrationScriptPath,
 			log: log,
 			got: got.extend({ retry: 0 }),
+			context: {
+				getIndexName: (): string => 'foo',
+			},
 		});
 	}
 

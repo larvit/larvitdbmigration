@@ -8,6 +8,7 @@ const topLogPrefix = 'larvitdbmigration: index.js -';
 export type DbMigrationOptions = {
 	dbType: 'mariadb' | 'elasticsearch',
 	dbDriver?: any,
+	context?: object,
 	tableName?: string,
 	indexName?: string,
 	migrationScriptPath?: string,
@@ -26,6 +27,7 @@ export class DbMigration {
 	 * @param {object} options -
 	 * @param {String} options.dbType - "mariadb" or "elasticsearch"
 	 * @param {object} options.dbDriver - instance of your mariadb database driver. For example larvitdb.
+	 * @param {object} [options.context] - Context that can carry arbitrary information to the migrations (such as an instance of the lib that is doing the migrations)
 	 * @param {String} [options.tableName="db_version"] -
 	 * @param {String} [options.indexName="db_version"] -
 	 * @param {String} [options.url] - must be specified if dbType is "elasticsearch"
