@@ -176,17 +176,17 @@ describe('Elasticsearch migrations', () => {
 		});
 	}
 
-	async function assertThrows(fn: () => unknown, message: string): Promise<void> {
+	async function assertThrows(fn: () => unknown, partOfMessage: string): Promise<void> {
 		try {
 			await fn();
 		} catch (_err) {
 			const err = _err as Error;
-			assert.strictEqual(err.message, message);
+			assert.ok(err.message.includes(partOfMessage));
 
 			return;
 		}
 
-		assert.fail(`Did not get expected exception: ${message}`);
+		assert.fail(`Did not get expected part of exception message: ${partOfMessage}`);
 	}
 
 	beforeEach(async () => {
@@ -288,7 +288,7 @@ describe('Elasticsearch migrations', () => {
 	it('should fail with exception when running migration script with error', async () => {
 		const dbMigrations = createEsMigration({ migrationScriptPath: path.join(__dirname, '../testmigrations_elasticsearch_failure') });
 
-		await assertThrows(async () => await dbMigrations.run(), 'Error when running migration script /home/snorr/Documents/code/larvit/larvitdbmigration/testmigrations_elasticsearch_failure/1.js: Cannot read property \'trim\' of undefined');
+		await assertThrows(async () => await dbMigrations.run(), 'Cannot read property \'trim\' of undefined');
 	});
 
 	it('should write failure status to version document when running migration script with error', async () => {
