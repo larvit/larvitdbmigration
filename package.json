@@ -14,7 +14,7 @@
   },
   "description": "node.js database migration tool",
   "devDependencies": {
-    "@istanbuljs/nyc-config-typescript": "1.0.1",
+    "@istanbuljs/nyc-config-typescript": "1.0.2",
     "@types/mocha": "9.0.0",
     "@types/node": "16.11.10",
     "@typescript-eslint/eslint-plugin": "5.4.0",
