@@ -294,7 +294,7 @@ describe('Elasticsearch migrations', () => {
 	it('should fail with exception when running migration script with error', async () => {
 		const dbMigrations = createEsMigration({ migrationScriptPath: path.join(__dirname, '../testmigrations_elasticsearch_failure') });
 
-		await assertThrows(async () => await dbMigrations.run(), 'Cannot read property \'trim\' of undefined');
+		await assertThrows(async () => await dbMigrations.run(), 'testmigrations_elasticsearch_failure/1.js: Cannot read');
 	});
 
 	it('should write failure status to version document when running migration script with error', async () => {
