@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   test:
-    uses: larvit/standards/.github/workflows/test-mariadb.yml@master
+    uses: larvit/standards/.github/workflows/test-es-mariadb.yml@master
 
   publish:
     if: github.ref == 'refs/heads/master'
