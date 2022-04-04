@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/larvit/larvitdbmigration.svg?branch=master)](https://travis-ci.org/larvit/larvitdbmigration) [![Dependencies](https://david-dm.org/larvit/larvitdbmigration.svg)](https://david-dm.org/larvit/larvitdbmigration.svg)
+[![Build Status](https://github.com/larvit/larvitdbmigration/actions/workflows/ci.yml/badge.svg)](https://github.com/larvit/larvitdbmigration/actions)
 
 # Database migration tool
 
