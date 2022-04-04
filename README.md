@@ -64,7 +64,7 @@ const dbMigration = new DbMigration({
 	url: 'http://127.0.0.1:9200',
 	indexName: 'db_version', // Optional
 	migrationScriptPath: './dbmigration', // Optional
-	got // Optional, will use default got instance if not specified.
+	axios // Optional, will use default axios instance if not specified.
 	log // Optional, will use log.silly(), log.debug(), log.verbose(), log.info(), log.warn() and log.error() if given.
 });
 
@@ -74,8 +74,6 @@ dbMigration.run().then(() => {
 	throw err;
 });
 ```
-
-Retry behavior can be configured in the got instance that is passed to the constructor.
 
 ### Example migration scripts
 
@@ -109,20 +107,18 @@ Create the file process.cwd()/migrationScriptPath/1.js with this content:
 ```javascript
 'use strict';
 
-const got = require('got');
+const axios = require('axios');
 
 exports = module.exports = async function (options) {
 	const {url, log} = options;
 
 	log.info('Some script-specific logging');
 
-	await got.put(`${url}/some_index/_mapping`, {
-		json: {
-			properties: {
-				names: {
-					type: 'string',
-					position_increment_gap: 100
-				}
+	await axios.put(`${url}/some_index/_mapping`, {
+		properties: {
+			names: {
+				type: 'string',
+				position_increment_gap: 100
 			}
 		}
 	});
@@ -144,6 +140,9 @@ ALTER TABLE bloj CHANGE nisse hasse int(11);
 Tadaaa! Now this gets done once and the version will be bumped to 1. If you then create a script named "2.js" or "2.sql" you might guess what happends. :)
 
 ## Changelog
+### 7.0.0
+* Replaced got with axios (latest versions of got required ES modules and adopters of this lib is not quite ready for it).
+
 ### 6.0.0
 * Removed locking mechanism for Elasticsearch migrations, there is no support for it in Elasticsearch.
 * Rewrote library in TypeScript.

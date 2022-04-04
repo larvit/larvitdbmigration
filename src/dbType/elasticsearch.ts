@@ -1,12 +1,12 @@
 import { LogInstance } from 'larvitutils';
-import { Got, HTTPError, Response } from 'got';
+import { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import fs from 'fs';
 
 const topLogPrefix = 'larvitdbmigration: dbType/elasticsearch.js:';
 
 export type ElasticsearchDriverOptions = {
 	url: string,
-	got: Got,
+	axios: AxiosInstance,
 	indexName: string,
 	context?: object,
 	log: LogInstance
@@ -27,7 +27,7 @@ export default class ElasticsearchDriver {
 	 * @param {String} options.migrationScriptPath -
 	 */
 	constructor(options: ElasticsearchDriverOptions) {
-		for (const option of ['log', 'got', 'indexName', 'url', 'migrationScriptPath']) {
+		for (const option of ['log', 'axios', 'indexName', 'url', 'migrationScriptPath']) {
 			if (!options[option as keyof ElasticsearchDriverOptions]) {
 				/* istanbul ignore next */
 				throw new Error('Missing required option "' + option + '"');
@@ -42,9 +42,9 @@ export default class ElasticsearchDriver {
 
 	private async getDoc(options: {
 		throwHttpErrors: boolean
-	}): Promise<{ doc: any, response: Response<string> }> {
+	}): Promise<{ doc: any, response: AxiosResponse<string> }> {
 		const { docUri } = this;
-		const { log, got } = this.options;
+		const { log, axios } = this.options;
 		const { throwHttpErrors } = options;
 		const logPrefix = `${topLogPrefix} getDoc() -`;
 
@@ -53,15 +53,24 @@ export default class ElasticsearchDriver {
 		let doc;
 
 		try {
-			const response = await got(docUri, { throwHttpErrors });
+			const axiosOptions: AxiosRequestConfig<any> = {
+				responseType: 'text',
+				transformResponse: [(data): string => data],
+			};
 
-			log.debug(`${logPrefix} GET ${docUri} ${response.statusCode} ${response.statusMessage}`);
+			if (!throwHttpErrors) {
+				axiosOptions.validateStatus = (): boolean => true;
+			}
 
-			if (response.statusCode === 200) {
+			const response = await axios(docUri, axiosOptions);
+
+			log.debug(`${logPrefix} GET ${docUri} ${response.status} ${response.statusText}`);
+
+			if (response.status === 200) {
 				try {
-					doc = JSON.parse(response.body);
+					doc = JSON.parse(response.data);
 				} catch (err) {
-					const msg = `${err}, body: ${response.body}`;
+					const msg = `${err}, body: ${response.data}`;
 					throw new Error(msg);
 				}
 			}
@@ -77,7 +86,7 @@ export default class ElasticsearchDriver {
 	}
 
 	private async createIndexIfNotExists(): Promise<void> {
-		const { indexName, log, got, url } = this.options;
+		const { indexName, log, axios, url } = this.options;
 		const logPrefix = `${topLogPrefix} createIndexIfNotExists() - indexName: "${indexName}" -`;
 		const uri = `${url}/${indexName}`;
 
@@ -85,14 +94,14 @@ export default class ElasticsearchDriver {
 
 		// Check if index already exists
 		try {
-			const response = await got.head(uri, { throwHttpErrors: false });
+			const response = await axios.head(uri, { validateStatus: () => true });
 
-			if (response.statusCode === 200) {
+			if (response.status === 200) {
 				log.debug(`${logPrefix} Index already exists`);
 
 				return;
-			} else if (response.statusCode !== 404) {
-				throw new Error(`unexpected statusCode: ${response.statusCode}`);
+			} else if (response.status !== 404) {
+				throw new Error(`unexpected status code: ${response.status}`);
 			}
 
 			log.debug(`${logPrefix} Index does not exist, create it`);
@@ -104,12 +113,12 @@ export default class ElasticsearchDriver {
 
 		// If we arrive here its a 404 - create it!
 		try {
-			await got.put(uri);
+			await axios.put(uri);
 
 			log.debug(`${logPrefix} Created!`);
 		} catch (_err) {
 			const errPrefix = `PUT ${uri} failed, err:`;
-			const msg = this.msgFromGotException(_err);
+			const msg = this.msgFromAxiosException(_err);
 
 			log.error(`${logPrefix} ${errPrefix} ${msg}`);
 			throw new Error(`${errPrefix} ${msg}`);
@@ -118,18 +127,19 @@ export default class ElasticsearchDriver {
 
 	private async createDoc(): Promise<void> {
 		const { docUri } = this;
-		const { log, got } = this.options;
+		const { log, axios } = this.options;
 		const logPrefix = `${topLogPrefix} createDoc() -`;
 
 		log.debug(`${logPrefix} Create database version document: ${docUri}`);
 
-		const response = await got.post(docUri, {
-			json: { version: 0, status: 'finished' },
-			throwHttpErrors: false,
-		});
+		const response = await axios.post(
+			docUri,
+			{ version: 0, status: 'finished' },
+			{ validateStatus: () => true },
+		);
 
-		if (response.statusCode !== 201) {
-			const msg = `Failed to create version document, statusCode: ${response.statusCode}, body: ${response.body}`;
+		if (response.status !== 201) {
+			const msg = `Failed to create version document, status code: ${response.status}, body: ${response.data}`;
 			log.error(`${logPrefix} ${msg}`);
 			throw new Error(msg);
 		}
@@ -142,12 +152,12 @@ export default class ElasticsearchDriver {
 		const logPrefix = `${topLogPrefix} createDocIfNotExists() - indexName: "${indexName}" -`;
 
 		const { response } = await this.getDoc({ throwHttpErrors: false });
-		if (response.statusCode === 404) {
+		if (response.status === 404) {
 			await this.createDoc();
-		} else if (response.statusCode === 200) {
+		} else if (response.status === 200) {
 			log.debug(`${logPrefix} Database version document already exists`);
 		} else {
-			const msg = `Unexpected statusCode when getting database version document: ${response.statusCode}, body: ${response.body}`;
+			const msg = `Unexpected status code when getting database version document: ${response.status}, body: ${response.data}`;
 			log.error(`${logPrefix} ${msg}`);
 			throw new Error(msg);
 		}
@@ -176,28 +186,25 @@ export default class ElasticsearchDriver {
 		status: string
 	}): Promise<void> {
 		const { docUri } = this;
-		const { log, got } = this.options;
+		const { log, axios } = this.options;
 		const logPrefix = `${topLogPrefix} putVersion() - version document: "${docUri}" -`;
 
 		log.verbose(`${logPrefix} Putting version document: ${JSON.stringify(doc)}`);
 
 		try {
-			await got.put(docUri, { json: doc });
+			await axios.put(docUri, doc);
 		} catch (_err) {
 			const errorPrefix = `PUT ${docUri} failed, err:`;
-			const msg = this.msgFromGotException(_err);
+			const msg = this.msgFromAxiosException(_err);
 
 			log.error(`${logPrefix} ${errorPrefix} ${msg}`);
 			throw new Error(`${errorPrefix} ${msg}`);
 		}
 	}
 
-	private msgFromGotException(_err: unknown): string {
+	private msgFromAxiosException(_err: unknown): string {
 		let msg = '';
-		if (_err instanceof HTTPError) {
-			const err = _err as HTTPError;
-			msg = `Unexpected statusCode: ${err.response.statusCode}, body: ${err.response.body}`;
-		} else if (_err instanceof Error) {
+		if (_err instanceof Error) {
 			const err = _err as Error;
 			msg = `${err.message}`;
 		} else {

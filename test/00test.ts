@@ -5,7 +5,7 @@ import { Utils } from 'larvitutils';
 import assert from 'assert';
 import Db from 'larvitdb';
 import { DbMigration, DbMigrationOptions } from '../src/index';
-import got from 'got';
+import axios from 'axios';
 import path from 'path';
 import nock from 'nock';
 
@@ -17,7 +17,7 @@ let db: any;
 dotenv.config();
 
 const esConf = {
-	host: process.env.ES_HOST !== undefined ? process.env.ES_HOST : '127.0.0.1:9200',
+	host: process.env.ES_HOST !== undefined ? process.env.ES_HOST : '127.0.0.1:19200',
 };
 
 before(async () => {
@@ -25,8 +25,8 @@ before(async () => {
 	const mariaConf = {
 		host: process.env.DB_HOST !== undefined ? process.env.DB_HOST : '127.0.0.1',
 		user: process.env.DB_USER !== undefined ? process.env.DB_USER : 'root',
-		port: process.env.DB_PORT !== undefined ? process.env.DB_PORT : '3306',
-		password: process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : 'toor',
+		port: process.env.DB_PORT !== undefined ? process.env.DB_PORT : '13306',
+		password: process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : 'test',
 		database: process.env.DB_DATABASE !== undefined ? process.env.DB_DATABASE : 'test',
 	};
 	log.debug(`mariaConf: ${JSON.stringify(mariaConf)}`);
@@ -45,10 +45,10 @@ before(async () => {
 	log.debug(`esConf: ${JSON.stringify(esConf)}`);
 
 	log.debug('Deleting all indices from ES, host');
-	await got.delete(`http://${esConf.host}/_all`);
+	await axios.delete(`http://${esConf.host}/_all`);
 
 	log.debug('Check that all indices are deleted from ES');
-	const jsonBody = await got(`http://${esConf.host}/_cat/indices?format=json`).json();
+	const jsonBody = (await axios(`http://${esConf.host}/_cat/indices?format=json`)).data;
 	if (!Array.isArray(jsonBody) || jsonBody.length !== 0) {
 		throw new Error('Elasticsearch is not empty. To make a test, you must supply an empty database!');
 	}
@@ -57,7 +57,7 @@ before(async () => {
 after(async () => {
 	await db.removeAllTables();
 	await db.pool.end();
-	await got.delete(`http://${esConf.host}/_all`);
+	await axios.delete(`http://${esConf.host}/_all`);
 });
 
 describe('General', () => {
@@ -175,7 +175,7 @@ describe('Elasticsearch migrations', () => {
 			url: `http://${esConf.host}`,
 			migrationScriptPath: options.migrationScriptPath,
 			log: log,
-			got: got.extend({ retry: 0 }),
+			axios: axios.create(),
 			context: {
 				getIndexName: (): string => 'foo',
 			},
@@ -196,7 +196,7 @@ describe('Elasticsearch migrations', () => {
 	}
 
 	beforeEach(async () => {
-		await got.delete(`http://${esConf.host}/_all`);
+		await axios.delete(`http://${esConf.host}/_all`);
 	});
 
 	it('should fail when HEAD returns unexpected status code when checking for index', async () => {
@@ -205,7 +205,7 @@ describe('Elasticsearch migrations', () => {
 			.head('/db_version')
 			.reply(500, 'Internal error');
 
-		await assertThrows(async () => await dbMigrations.run(), `HEAD http://${esConf.host}/db_version failed, err: unexpected statusCode: 500`);
+		await assertThrows(async () => await dbMigrations.run(), `HEAD http://${esConf.host}/db_version failed, err: unexpected status code: 500`);
 		ctx.done();
 	});
 
@@ -215,7 +215,7 @@ describe('Elasticsearch migrations', () => {
 			.put('/db_version')
 			.reply(500, 'Internal error');
 
-		await assertThrows(async () => await dbMigrations.run(), `PUT http://${esConf.host}/db_version failed, err: Unexpected statusCode: 500, body: Internal error`);
+		await assertThrows(async () => await dbMigrations.run(), `PUT http://${esConf.host}/db_version failed, err: Request failed with status code 500`);
 		ctx.done();
 	});
 
@@ -246,7 +246,7 @@ describe('Elasticsearch migrations', () => {
 			.get('/db_version/_doc/1')
 			.reply(500, 'Internal error');
 
-		await assertThrows(async () => await dbMigrations.run(), 'Unexpected statusCode when getting database version document: 500, body: Internal error');
+		await assertThrows(async () => await dbMigrations.run(), 'Unexpected status code when getting database version document: 500, body: Internal error');
 		ctx.done();
 	});
 
@@ -267,7 +267,7 @@ describe('Elasticsearch migrations', () => {
 			.post('/db_version/_doc/1')
 			.reply(500, 'Internal error');
 
-		await assertThrows(async () => await dbMigrations.run(), 'Failed to create version document, statusCode: 500, body: Internal error');
+		await assertThrows(async () => await dbMigrations.run(), 'Failed to create version document, status code: 500, body: Internal error');
 		ctx.done();
 	});
 
@@ -277,7 +277,7 @@ describe('Elasticsearch migrations', () => {
 			.put('/db_version/_doc/1')
 			.reply(500, 'Internal error');
 
-		await assertThrows(async () => await dbMigrations.run(), `PUT http://${esConf.host}/db_version/_doc/1 failed, err: Unexpected statusCode: 500, body: Internal error`);
+		await assertThrows(async () => await dbMigrations.run(), `PUT http://${esConf.host}/db_version/_doc/1 failed, err: Request failed with status code 500`);
 		ctx.done();
 	});
 
@@ -306,7 +306,7 @@ describe('Elasticsearch migrations', () => {
 			assert.ok(err);
 		}
 
-		const doc = await got(`http://${esConf.host}/db_version/_doc/1`).json() as any;
+		const doc = (await axios(`http://${esConf.host}/db_version/_doc/1`)).data;
 		assert.strictEqual(doc._source.version, 1);
 		assert.strictEqual(doc._source.status, 'failed');
 	});
@@ -316,7 +316,7 @@ describe('Elasticsearch migrations', () => {
 
 		await dbMigrations.run();
 
-		const doc = await got(`http://${esConf.host}/db_version/_doc/1`).json() as any;
+		const doc = (await axios(`http://${esConf.host}/db_version/_doc/1`)).data;
 		assert.strictEqual(doc._source.version, 2);
 		assert.strictEqual(doc._source.status, 'finished');
 	});
@@ -326,7 +326,7 @@ describe('Elasticsearch migrations', () => {
 
 		await dbMigrations.run();
 
-		const doc = await got(`http://${esConf.host}/foo/_doc/666`).json() as any;
+		const doc = (await axios(`http://${esConf.host}/foo/_doc/666`)).data;
 		assert.strictEqual(doc._source.blubb, 7);
 	});
 
@@ -336,7 +336,7 @@ describe('Elasticsearch migrations', () => {
 		await dbMigrations.run();
 		await dbMigrations.run();
 
-		const doc = await got(`http://${esConf.host}/db_version/_doc/1`).json() as any;
+		const doc = (await axios(`http://${esConf.host}/db_version/_doc/1`)).data;
 		assert.strictEqual(doc._source.version, 2);
 		assert.strictEqual(doc._source.status, 'finished');
 	});
