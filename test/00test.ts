@@ -201,7 +201,7 @@ describe('Elasticsearch migrations', () => {
 
 	it('should fail when HEAD returns unexpected status code when checking for index', async () => {
 		const dbMigrations = createEsMigration();
-		const ctx = nock('http://127.0.0.1:19200', { allowUnmocked: true })
+		const ctx = nock(`http://${esConf.host}`, { allowUnmocked: true })
 			.head('/db_version')
 			.reply(500, 'Internal error');
 
@@ -211,7 +211,7 @@ describe('Elasticsearch migrations', () => {
 
 	it('should fail when PUT returns unexpected status code when creating index', async () => {
 		const dbMigrations = createEsMigration();
-		const ctx = nock('http://127.0.0.1:19200', { allowUnmocked: true })
+		const ctx = nock(`http://${esConf.host}`, { allowUnmocked: true })
 			.put('/db_version')
 			.reply(500, 'Internal error');
 
@@ -221,7 +221,7 @@ describe('Elasticsearch migrations', () => {
 
 	it('should fail when PUT fails with exception when creating index', async () => {
 		const dbMigrations = createEsMigration();
-		const ctx = nock('http://127.0.0.1:19200', { allowUnmocked: true })
+		const ctx = nock(`http://${esConf.host}`, { allowUnmocked: true })
 			.put('/db_version')
 			.replyWithError('Nasty error');
 
@@ -232,7 +232,7 @@ describe('Elasticsearch migrations', () => {
 
 	it('should fail when GET fails with exception when trying to get version document', async () => {
 		const dbMigrations = createEsMigration();
-		const ctx = nock('http://127.0.0.1:19200', { allowUnmocked: true })
+		const ctx = nock(`http://${esConf.host}`, { allowUnmocked: true })
 			.get('/db_version/_doc/1')
 			.replyWithError('Nasty error');
 
@@ -242,7 +242,7 @@ describe('Elasticsearch migrations', () => {
 
 	it('should fail when GET fails with unexpected status code when trying to get version document', async () => {
 		const dbMigrations = createEsMigration();
-		const ctx = nock('http://127.0.0.1:19200', { allowUnmocked: true })
+		const ctx = nock(`http://${esConf.host}`, { allowUnmocked: true })
 			.get('/db_version/_doc/1')
 			.reply(500, 'Internal error');
 
@@ -252,7 +252,7 @@ describe('Elasticsearch migrations', () => {
 
 	it('should fail when version document returns bad JSON', async () => {
 		const dbMigrations = createEsMigration();
-		const ctx = nock('http://127.0.0.1:19200', { allowUnmocked: true })
+		const ctx = nock(`http://${esConf.host}`, { allowUnmocked: true })
 			.get('/db_version/_doc/1')
 			.reply(200, '{"bad": json}');
 
@@ -263,7 +263,7 @@ describe('Elasticsearch migrations', () => {
 
 	it('should fail when POST fails when trying to create version document', async () => {
 		const dbMigrations = createEsMigration();
-		const ctx = nock('http://127.0.0.1:19200', { allowUnmocked: true })
+		const ctx = nock(`http://${esConf.host}`, { allowUnmocked: true })
 			.post('/db_version/_doc/1')
 			.reply(500, 'Internal error');
 
@@ -273,7 +273,7 @@ describe('Elasticsearch migrations', () => {
 
 	it('should fail when PUT fails with unexpected status code when trying to update version document', async () => {
 		const dbMigrations = createEsMigration();
-		const ctx = nock('http://127.0.0.1:19200', { allowUnmocked: true })
+		const ctx = nock(`http://${esConf.host}`, { allowUnmocked: true })
 			.put('/db_version/_doc/1')
 			.reply(500, 'Internal error');
 
@@ -283,7 +283,7 @@ describe('Elasticsearch migrations', () => {
 
 	it('should fail when PUT fails with exception when trying to update version document', async () => {
 		const dbMigrations = createEsMigration();
-		const ctx = nock('http://127.0.0.1:19200', { allowUnmocked: true })
+		const ctx = nock(`http://${esConf.host}`, { allowUnmocked: true })
 			.put('/db_version/_doc/1')
 			.replyWithError('Nasty error');
 
