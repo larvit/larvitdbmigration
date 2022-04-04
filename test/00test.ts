@@ -187,7 +187,7 @@ describe('Elasticsearch migrations', () => {
 			await fn();
 		} catch (_err) {
 			const err = _err as Error;
-			assert.ok(err.message.includes(partOfMessage));
+			assert.ok(err.message.includes(partOfMessage), `Exception message did not contain expected string, expected part: "${partOfMessage}", actual: "${err.message}"`);
 
 			return;
 		}
@@ -205,7 +205,7 @@ describe('Elasticsearch migrations', () => {
 			.head('/db_version')
 			.reply(500, 'Internal error');
 
-		await assertThrows(async () => await dbMigrations.run(), 'HEAD http://127.0.0.1:19200/db_version failed, err: unexpected statusCode: 500');
+		await assertThrows(async () => await dbMigrations.run(), `HEAD http://${esConf.host}/db_version failed, err: unexpected statusCode: 500`);
 		ctx.done();
 	});
 
@@ -215,7 +215,7 @@ describe('Elasticsearch migrations', () => {
 			.put('/db_version')
 			.reply(500, 'Internal error');
 
-		await assertThrows(async () => await dbMigrations.run(), 'PUT http://127.0.0.1:19200/db_version failed, err: Unexpected statusCode: 500, body: Internal error');
+		await assertThrows(async () => await dbMigrations.run(), `PUT http://${esConf.host}/db_version failed, err: Unexpected statusCode: 500, body: Internal error`);
 		ctx.done();
 	});
 
@@ -225,7 +225,7 @@ describe('Elasticsearch migrations', () => {
 			.put('/db_version')
 			.replyWithError('Nasty error');
 
-		await assertThrows(async () => await dbMigrations.run(), 'PUT http://127.0.0.1:19200/db_version failed, err: Nasty error');
+		await assertThrows(async () => await dbMigrations.run(), `PUT http://${esConf.host}/db_version failed, err: Nasty error`);
 		ctx.done();
 	});
 
@@ -236,7 +236,7 @@ describe('Elasticsearch migrations', () => {
 			.get('/db_version/_doc/1')
 			.replyWithError('Nasty error');
 
-		await assertThrows(async () => await dbMigrations.run(), 'GET http://127.0.0.1:19200/db_version/_doc/1 failed, err: Nasty error');
+		await assertThrows(async () => await dbMigrations.run(), `GET http://${esConf.host}/db_version/_doc/1 failed, err: Nasty error`);
 		ctx.done();
 	});
 
@@ -256,7 +256,7 @@ describe('Elasticsearch migrations', () => {
 			.get('/db_version/_doc/1')
 			.reply(200, '{"bad": json}');
 
-		await assertThrows(async () => await dbMigrations.run(), 'GET http://127.0.0.1:19200/db_version/_doc/1 failed, err: SyntaxError: Unexpected token j in JSON at position 8, body: {"bad": json}');
+		await assertThrows(async () => await dbMigrations.run(), `GET http://${esConf.host}/db_version/_doc/1 failed, err: SyntaxError: Unexpected token j in JSON at position 8, body: {"bad": json}`);
 		ctx.done();
 	});
 
@@ -277,7 +277,7 @@ describe('Elasticsearch migrations', () => {
 			.put('/db_version/_doc/1')
 			.reply(500, 'Internal error');
 
-		await assertThrows(async () => await dbMigrations.run(), 'PUT http://127.0.0.1:19200/db_version/_doc/1 failed, err: Unexpected statusCode: 500, body: Internal error');
+		await assertThrows(async () => await dbMigrations.run(), `PUT http://${esConf.host}/db_version/_doc/1 failed, err: Unexpected statusCode: 500, body: Internal error`);
 		ctx.done();
 	});
 
@@ -287,7 +287,7 @@ describe('Elasticsearch migrations', () => {
 			.put('/db_version/_doc/1')
 			.replyWithError('Nasty error');
 
-		await assertThrows(async () => await dbMigrations.run(), 'PUT http://127.0.0.1:19200/db_version/_doc/1 failed, err: Nasty error');
+		await assertThrows(async () => await dbMigrations.run(), `PUT http://${esConf.host}/db_version/_doc/1 failed, err: Nasty error`);
 		ctx.done();
 	});
 
