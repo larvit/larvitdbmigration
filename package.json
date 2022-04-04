@@ -9,7 +9,7 @@
   "private": false,
   "contributors": [],
   "dependencies": {
-    "got": "11.8.3",
+    "axios": "0.26.1",
     "larvitutils": "5.0.4"
   },
   "description": "node.js database migration tool",

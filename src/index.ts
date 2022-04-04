@@ -1,4 +1,4 @@
-import got, { Got } from 'got';
+import axios, { AxiosInstance } from 'axios';
 import { Log, LogInstance } from 'larvitutils';
 import ElasticsearchDriver, { ElasticsearchDriverOptions } from './dbType/elasticsearch';
 import MariaDbDriver, { MariaDbDriverOptions } from './dbType/mariadb';
@@ -13,7 +13,7 @@ export type DbMigrationOptions = {
 	indexName?: string,
 	migrationScriptPath?: string,
 	log?: LogInstance,
-	got?: Got,
+	axios?: AxiosInstance,
 	url?: string,
 };
 
@@ -31,7 +31,7 @@ export class DbMigration {
 	 * @param {String} [options.tableName="db_version"] -
 	 * @param {String} [options.indexName="db_version"] -
 	 * @param {String} [options.url] - must be specified if dbType is "elasticsearch"
-	 * @param {String} [options.got] - optional got instance to be used if dbType is "elasticsearch"
+	 * @param {String} [options.axios] - optional axios instance to be used if dbType is "elasticsearch"
 	 * @param {String} [options.migrationScriptPath="./dbmigration"] -
 	 * @param {object} [options.log=instance of lutils.Log()] -
 	 */
@@ -67,7 +67,7 @@ export class DbMigration {
 			this.driver = new MariaDbDriver(options as MariaDbDriverOptions);
 			log.verbose(`${logPrefix} Started with dbType: "mariadb", tableName: "${options.tableName}", migrationScriptPath: "${options.migrationScriptPath}"`);
 		} else {
-			options.got = options.got ?? got.extend();
+			options.axios = options.axios ?? axios.create();
 			this.driver = new ElasticsearchDriver(options as ElasticsearchDriverOptions);
 			log.verbose(`${logPrefix} Started with dbType: "elasticsearch", indexName: "${options.indexName}", migrationScriptPath: "${options.migrationScriptPath}"`);
 		}
