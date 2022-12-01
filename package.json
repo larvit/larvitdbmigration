@@ -10,7 +10,8 @@
   "contributors": [],
   "dependencies": {
     "axios": "0.27.2",
-    "larvitutils": "5.1.17"
+    "larvitutils": "5.1.17",
+    "mysql2": "2.3.3"
   },
   "description": "node.js database migration tool",
   "devDependencies": {
@@ -24,7 +25,6 @@
     "larvitdb": "3.2.26",
     "mocha": "9.2.2",
     "mocha-eslint": "7.0.0",
-    "mysql2": "2.3.3",
     "nock": "13.2.9",
     "nyc": "15.1.0",
     "ts-node": "10.9.1",
