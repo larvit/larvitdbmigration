@@ -1,6 +1,6 @@
 {
   "name": "larvitdbmigration",
-  "version": "7.0.80",
+  "version": "7.0.81",
   "author": {
     "name": "Mikael 'Lilleman' Göransson",
     "email": "lilleman@larvit.se",
@@ -9,17 +9,17 @@
   "private": false,
   "contributors": [],
   "dependencies": {
-    "axios": "1.6.0",
+    "axios": "1.6.1",
     "larvitutils": "5.1.61",
     "mysql2": "3.6.3"
   },
   "description": "node.js database migration tool",
   "devDependencies": {
     "@istanbuljs/nyc-config-typescript": "1.0.2",
-    "@types/mocha": "10.0.3",
-    "@types/node": "20.8.10",
-    "@typescript-eslint/eslint-plugin": "6.9.1",
-    "@typescript-eslint/parser": "6.9.1",
+    "@types/mocha": "10.0.4",
+    "@types/node": "20.9.0",
+    "@typescript-eslint/eslint-plugin": "6.10.0",
+    "@typescript-eslint/parser": "6.10.0",
     "dotenv": "16.3.1",
     "eslint": "8.53.0",
     "larvitdb": "3.2.63",
