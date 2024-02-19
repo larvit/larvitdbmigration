@@ -1,6 +1,6 @@
 {
   "name": "larvitdbmigration",
-  "version": "7.0.93",
+  "version": "7.0.94",
   "author": {
     "name": "Mikael 'Lilleman' Göransson",
     "email": "lilleman@larvit.se",
@@ -18,8 +18,8 @@
     "@istanbuljs/nyc-config-typescript": "1.0.2",
     "@types/mocha": "10.0.6",
     "@types/node": "20.11.17",
-    "@typescript-eslint/eslint-plugin": "6.21.0",
-    "@typescript-eslint/parser": "6.21.0",
+    "@typescript-eslint/eslint-plugin": "7.0.1",
+    "@typescript-eslint/parser": "7.0.1",
     "dotenv": "16.4.2",
     "eslint": "8.56.0",
     "larvitdb": "3.2.75",
