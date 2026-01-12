@@ -1,6 +1,6 @@
 {
   "name": "larvitdbmigration",
-  "version": "7.0.190",
+  "version": "7.0.191",
   "author": {
     "name": "Mikael 'Lilleman' Göransson",
     "email": "lilleman@larvit.se",
@@ -21,7 +21,7 @@
     "@typescript-eslint/eslint-plugin": "7.18.0",
     "@typescript-eslint/parser": "7.18.0",
     "dotenv": "17.2.3",
-    "eslint": "8.57.1",
+    "eslint": "9.39.2",
     "larvitdb": "3.2.139",
     "mocha": "11.7.5",
     "mocha-eslint": "7.0.0",
