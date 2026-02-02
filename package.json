@@ -1,6 +1,6 @@
 {
   "name": "larvitdbmigration",
-  "version": "7.0.192",
+  "version": "7.0.193",
   "author": {
     "name": "Mikael 'Lilleman' Göransson",
     "email": "lilleman@larvit.se",
@@ -9,7 +9,7 @@
   "private": false,
   "contributors": [],
   "dependencies": {
-    "axios": "1.13.3",
+    "axios": "1.13.4",
     "larvitutils": "5.1.173",
     "mysql2": "3.9.3"
   },
