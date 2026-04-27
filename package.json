@@ -1,6 +1,6 @@
 {
   "name": "larvitdbmigration",
-  "version": "7.0.203",
+  "version": "7.0.204",
   "author": {
     "name": "Mikael 'Lilleman' Göransson",
     "email": "lilleman@larvit.se",
@@ -28,7 +28,7 @@
     "nock": "14.0.13",
     "nyc": "18.0.0",
     "ts-node": "10.9.2",
-    "typescript": "5.9.3"
+    "typescript": "6.0.3"
   },
   "keywords": [
     "db",
