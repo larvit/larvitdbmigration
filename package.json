@@ -1,6 +1,6 @@
 {
   "name": "larvitdbmigration",
-  "version": "7.0.228",
+  "version": "7.0.229",
   "author": {
     "name": "Mikael 'Lilleman' Göransson",
     "email": "lilleman@larvit.se",
@@ -9,8 +9,8 @@
   "private": false,
   "contributors": [],
   "dependencies": {
-    "axios": "1.20.0",
-    "larvitutils": "5.1.215",
+    "axios": "1.21.0",
+    "larvitutils": "5.1.217",
     "mysql2": "3.24.6"
   },
   "description": "node.js database migration tool",
